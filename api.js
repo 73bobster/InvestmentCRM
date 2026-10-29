@@ -111,7 +111,22 @@ export async function listAudit({ from: fromDate, to, table, limit = 200 } = {})
   if (table) q = q.eq('table_name', table);
   return ok(await q);
 }
-export const listAuditFor = async (ids, limit = 100) => ok(await from('audit_log').select('*').eq('organisation_id', org()).in('record_id', ids).order('occurred_at', { ascending: false }).order('id', { ascending: false }).limit(limit));
+export async function listAuditFor(ids, limit = 100) {
+  const seen = new Set(); const rows = [];
+  for (let i = 0; i < ids.length; i += 40) { // in small batches so the web address stays short
+    const part = ok(await from('audit_log').select('*').eq('organisation_id', org()).in('record_id', ids.slice(i, i + 40)).order('occurred_at', { ascending: false }).order('id', { ascending: false }).limit(limit));
+    for (const r of part) if (!seen.has(r.id)) { seen.add(r.id); rows.push(r); }
+  }
+  rows.sort((a, b) => (a.occurred_at < b.occurred_at ? 1 : a.occurred_at > b.occurred_at ? -1 : b.id - a.id));
+  return rows.slice(0, limit);
+}
+// Everything that belongs to a record: itself plus its notes, tasks, contacts, investments and their payments, targets and reviews.
+export function recordFamily(partyId) {
+  const ids = [partyId];
+  ids.push(...(D.entriesOf.get(partyId) || []).map((x) => x.id), ...(D.tasksOf.get(partyId) || []).map((x) => x.id), ...(D.contactsOf.get(partyId) || []).map((x) => x.id));
+  for (const a of D.agreementsOf.get(partyId) || []) ids.push(a.id, ...(D.paymentsOf.get(a.id) || []).map((x) => x.id), ...(D.targetsOf.get(a.id) || []).map((x) => x.id), ...(D.reviewsOf.get(a.id) || []).map((x) => x.id));
+  return ids;
+}
 
 // ---- The data this app works with ------------------------------------------------------------------------------------
 // Everything for the organisation is read once (a handful of requests at the same time) and kept here, indexed, so every

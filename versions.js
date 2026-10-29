@@ -2,17 +2,17 @@
 // It is shown at the bottom of each screen so a person can say exactly which version they were looking at.
 // Update the entry for a screen whenever you change it.
 export const SCREENS = [
-  ['dashboard', 'Dashboard', '1.2610291800'],
-  ['tasks', 'Tasks', '1.2610291800'],
-  ['diary', 'Diary', '1.2610291800'],
-  ['brands', 'Brand owners', '1.2610291800'],
-  ['customers', 'Customers', '1.2610291800'],
-  ['investments', 'Investments', '1.2610291800'],
-  ['contacts', 'Contacts', '1.2610291800'],
-  ['audit', 'Audit log', '1.2610291800'],
-  ['settings', 'Settings', '1.2610291800'],
-  ['help', 'Help', '1.2610291800'],
-  ['signin', 'Sign in', '1.2610291800'],
+  ['dashboard', 'Dashboard', '1.2610291815'],
+  ['tasks', 'Tasks', '1.2610291815'],
+  ['diary', 'Diary', '1.2610291815'],
+  ['brands', 'Brand owners', '1.2610291815'],
+  ['customers', 'Customers', '1.2610291815'],
+  ['investments', 'Investments', '1.2610291815'],
+  ['contacts', 'Contacts', '1.2610291815'],
+  ['audit', 'Audit log', '1.2610291815'],
+  ['settings', 'Settings', '1.2610291815'],
+  ['help', 'Help', '1.2610291815'],
+  ['signin', 'Sign in', '1.2610291815'],
 ];
 const BY_ID = new Map(SCREENS.map(([id, label, version]) => [id, { label, version }]));
 export const screenLabel = (id) => BY_ID.get(id)?.label || '';

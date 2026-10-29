@@ -213,7 +213,7 @@ export async function partyView(main, side, id, q = {}) {
     const prev = main.onclick;
     main.onclick = async (e) => {
       const tab = e.target.closest('[data-tab]');
-      if (tab) { ui.tab = tab.dataset.tab; if (ui.tab === 'history' && can.audit) history.splice(0, history.length, ...(await api.listAuditFor([id], 80))); draw(); return; }
+      if (tab) { ui.tab = tab.dataset.tab; if (ui.tab === 'history' && can.audit) history.splice(0, history.length, ...(await api.listAuditFor(api.recordFamily(id), 120))); draw(); return; }
       prev?.(e);
     };
     main.onchange = (e) => {
@@ -223,6 +223,6 @@ export async function partyView(main, side, id, q = {}) {
       else if (t.dataset.filter === 'decisions') { ui.decisions = t.checked; draw(); }
     };
   };
-  if (ui.tab === 'history' && can.audit) history.push(...await api.listAuditFor([id], 80));
+  if (ui.tab === 'history' && can.audit) history.push(...await api.listAuditFor(api.recordFamily(id), 120));
   await draw();
 }
