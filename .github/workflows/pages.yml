@@ -1,0 +1,49 @@
+# Publishes only the files the app needs to GitHub Pages (add a CNAME file to the repo root to use your own domain).
+# Migrations, tests, test fixtures, scripts and the README stay in the repository but are not put on the live site.
+name: Publish site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect the app files
+        run: |
+          mkdir _site
+          rsync -a ./ _site/ \
+            --exclude '.git' --exclude '.github' --exclude '_site' --exclude 'node_modules' \
+            --exclude 'migrations' --exclude 'tests' --exclude 'seed' --exclude 'tools' \
+            --exclude '*.mjs' \
+            --exclude 'package.json' --exclude 'package-lock.json' \
+            --exclude 'README.md' --exclude 'STYLE-GUIDE.md' --exclude '.gitignore'
+          touch _site/.nojekyll
+          echo "Published files:"; ls _site
+      - name: Check the site is complete
+        run: |
+          test -f _site/index.html && test -f _site/main.js && test -f _site/neon.js
+          for f in $(grep -ho "from '\./[^']*'" _site/*.js | sed "s/from '\.\///; s/'//" | sort -u); do
+            test -f "_site/$f" || { echo "Missing $f"; exit 1; }
+          done
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
