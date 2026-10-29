@@ -9,7 +9,7 @@ import { html, mount, on, icon, pill, emptyHtml, fmtDate, fmtTime, fmtDayTime, t
 const stamp = (d) => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 const dayStamp = (iso) => iso.replace(/-/g, '');
 function ics(items) {
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Alchemy Drinks//AD Investment CRM//EN', 'CALSCALE:GREGORIAN'];
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Alchemy Drinks//Investment CRM//EN', 'CALSCALE:GREGORIAN'];
   for (const it of items) {
     lines.push('BEGIN:VEVENT', `UID:${it.uid}@ad-investment-crm`, `DTSTAMP:${stamp(new Date())}`);
     if (it.start) lines.push(`DTSTART:${stamp(it.start)}`, `DTEND:${stamp(new Date(new Date(it.start).getTime() + 3600000))}`);

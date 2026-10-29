@@ -1,4 +1,4 @@
-# AD Investment CRM
+# Investment CRM
 
 An internal mini-CRM and investment tracker for Alchemy Drinks.
 

@@ -482,7 +482,7 @@ a.tag-link:hover { text-decoration: underline; }
 
 
 
-/* ======================= AD Investment CRM additions ======================= */
+/* ======================= Investment CRM additions ======================= */
 .side-app { display: block; width: fit-content; margin: 10px 0 0; padding: 2px 12px; font-size: 1.125rem; font-weight: 400; line-height: 1.4; letter-spacing: .02em; text-transform: uppercase; color: var(--section-ink); background: var(--section); }
 .side-log { flex: none; padding: 0 10px; }
 .mobile-app { font-size: .8125rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink); }
