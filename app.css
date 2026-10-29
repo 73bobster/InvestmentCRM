@@ -88,7 +88,7 @@ legend { padding: 0 6px; font-weight: 700; }
 .side { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: clamp(10px, 2.4dvh, 22px); padding: clamp(12px, 2.4dvh, 22px) 14px 16px; overflow-y: auto; color: var(--ink); background: var(--surface); border-right: 1px solid var(--line); }
 /* The logos scale with the window height so they never overlap the menu; if the window is very short the sidebar scrolls instead. */
 .side-brand { flex: none; padding: 0 10px; min-height: 40px; }
-.side-brand .logo { width: clamp(110px, 22dvh, 190px); }
+.side-brand .logo { width: 100%; }
 .side-nav { flex: none; display: grid; gap: 2px; }
 .side-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--ink-3); font-size: .9375rem; letter-spacing: .04em; text-decoration: none; border-radius: var(--radius); }
 .side-link:hover { color: var(--ink); background: var(--paper); }
@@ -483,12 +483,12 @@ a.tag-link:hover { text-decoration: underline; }
 
 
 /* ======================= Investment CRM additions ======================= */
-.side-tag { display: grid; width: fit-content; gap: 6px; margin-top: 10px; }
-.side-logbtn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin: 0; padding: 2px 12px; font: 400 1.125rem/1.4 var(--font-ui); letter-spacing: .02em; text-transform: uppercase; color: #fff; background: var(--ink); border: 0; border-radius: 0; cursor: pointer; }
-.side-logbtn:hover { background: #000; }
-.side-logbtn:focus-visible { outline: 3px solid var(--section); outline-offset: 2px; }
-.side-logbtn svg { width: 1em; height: 1em; }
-.side-app { display: block; width: 100%; margin: 0; padding: 2px 12px; font-size: 1.125rem; font-weight: 400; line-height: 1.4; letter-spacing: .02em; text-transform: uppercase; color: var(--section-ink); background: var(--section); }
+.side-app { display: block; width: 100%; margin: 0; padding: 2px 8px; text-align: center; font-size: 1.0625rem; font-weight: 400; line-height: 1.4; letter-spacing: .02em; text-transform: uppercase; color: var(--section-ink); background: var(--section); }
+.side-brand { display: flex; justify-content: center; }
+.side-tag { display: flex; flex-direction: column; align-items: stretch; gap: 14px; width: 200px; max-width: 100%; }
+.side-tag .brand-link { display: block; }
+.side-tag .logo { width: 100%; }
+.side-logbtn { width: 100%; }
 .side-log { flex: none; padding: 0 10px; }
 .mobile-app { font-size: .8125rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink); }
 .fab { display: none; }
