@@ -64,8 +64,7 @@ export function renderShell({ onSwitchOrg, onSignOut, onLog }) {
   mount(document.getElementById('app'), html`
     <div class="shell">
       <aside class="side">
-        <div class="side-brand"><a class="brand-link brand-stack" href="#/dashboard" aria-label="${CONFIG.appName} for ${org.name}: go to the dashboard">${logoImg(logo, org.name, 'side-name')}</a><p class="side-app">${CONFIG.appName}</p></div>
-        ${can.write ? html`<div class="side-log"><button type="button" class="btn btn-primary btn-block" data-action="log">${icon('plus')} Log</button></div>` : ''}
+        <div class="side-brand"><a class="brand-link brand-stack" href="#/dashboard" aria-label="${CONFIG.appName} for ${org.name}: go to the dashboard">${logoImg(logo, org.name, 'side-name')}</a><div class="side-tag"><p class="side-app">${CONFIG.appName}</p>${can.write ? html`<button type="button" class="side-logbtn" data-action="log">${icon('plus')} Log</button>` : ''}</div></div>
         <nav class="side-nav" aria-label="Main">${visibleNav().map((n) => navLink(n, 'side-link'))}</nav>
         <div class="side-foot">
           ${state.memberships.length > 1 ? html`<label class="side-switch"><span>Organisation</span><select id="org-switch">${state.memberships.map((m) => html`<option value="${m.organisation_id}" ${m.organisation_id === org.id ? 'selected' : ''}>${m.organisation.name}</option>`)}</select></label>` : ''}

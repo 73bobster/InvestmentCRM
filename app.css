@@ -483,7 +483,12 @@ a.tag-link:hover { text-decoration: underline; }
 
 
 /* ======================= Investment CRM additions ======================= */
-.side-app { display: block; width: fit-content; margin: 10px 0 0; padding: 2px 12px; font-size: 1.125rem; font-weight: 400; line-height: 1.4; letter-spacing: .02em; text-transform: uppercase; color: var(--section-ink); background: var(--section); }
+.side-tag { display: grid; width: fit-content; gap: 6px; margin-top: 10px; }
+.side-logbtn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin: 0; padding: 2px 12px; font: 400 1.125rem/1.4 var(--font-ui); letter-spacing: .02em; text-transform: uppercase; color: #fff; background: var(--ink); border: 0; border-radius: 0; cursor: pointer; }
+.side-logbtn:hover { background: #000; }
+.side-logbtn:focus-visible { outline: 3px solid var(--section); outline-offset: 2px; }
+.side-logbtn svg { width: 1em; height: 1em; }
+.side-app { display: block; width: 100%; margin: 0; padding: 2px 12px; font-size: 1.125rem; font-weight: 400; line-height: 1.4; letter-spacing: .02em; text-transform: uppercase; color: var(--section-ink); background: var(--section); }
 .side-log { flex: none; padding: 0 10px; }
 .mobile-app { font-size: .8125rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink); }
 .fab { display: none; }
