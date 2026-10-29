@@ -178,7 +178,7 @@ export async function partyView(main, side, id, q = {}) {
       const closed = myTasks.filter((t) => t.status !== 'open').sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
       panel = html`${w ? html`<p class="inline-actions"><button class="btn btn-primary" data-action="addtask" data-party="${id}">Add a task</button></p>` : ''}
         ${openTasks.length ? html`<ul class="tasks">${openTasks.map((t) => taskRow(t, { showParty: ui.below && kids.length > 0 }))}</ul>` : emptyHtml('No open tasks', isQuiet(party, tasksSum) ? 'This has gone quiet. Log something or add a task so it is revisited.' : '')}
-        ${closed.length ? html`<details><summary>Closed and cancelled (${closed.length})</summary><ul class="tasks">${closed.map((t) => taskRow(t, { showParty: ui.below && kids.length > 0 }))}</ul></details>` : ''}`;
+        ${closed.length ? html`<details><summary>Outcome recorded or cancelled (${closed.length})</summary><ul class="tasks">${closed.map((t) => taskRow(t, { showParty: ui.below && kids.length > 0 }))}</ul></details>` : ''}`;
     } else if (ui.tab === 'investments') {
       panel = html`${w ? html`<p class="inline-actions"><button class="btn btn-primary" data-action="a-add">Add an investment</button></p>` : ''}${agreements.length ? agreementsTable(agreements, { showParty: ui.below && kids.length > 0 }) : emptyHtml('No investments yet', side === 'brand' ? 'Add the support this brand owner provides.' : 'Add the investment made in this customer.')}`;
     } else if (ui.tab === 'below') {

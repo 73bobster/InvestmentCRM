@@ -5,7 +5,7 @@ import { state, can, ROLE_LABEL, ROLE_HINT, ROLE_ORDER, ACCESS_SUMMARY, MEMBER_S
 import { html, mount, on, openModal, fieldsHtml, readForm, toast, loadingHtml, emptyHtml, fmtDateShort, formatDate, DATE_FORMATS, getDateFormat, setDateFormat } from './ui.js';
 
 const SECTIONS = [['set-users', 'Users and access'], ['set-lists', 'Lists'], ['set-dates', 'Date format']];
-const LISTS = [['investment_kind', 'Kinds of investment', 'Offered when adding an investment.'], ['no_followup_reason', 'Reasons for no follow-up', 'Offered when someone chooses "No follow-up needed" or closes a task with nothing more to do.']];
+const LISTS = [['investment_kind', 'Kinds of investment', 'Offered when adding an investment.'], ['no_followup_reason', 'Reasons for no follow-up', 'Offered when someone chooses "No follow-up needed" or records an outcome with nothing more to do.'], ['task_outcome', 'Task outcomes', 'Chosen when the outcome of a task is recorded. Tick "ends the work" for outcomes that may finish with nothing more needed (such as Resolved); every other outcome must set a next step.'], ['task_category', 'Task categories', 'An optional label on a task, used to filter and count (Chase, Prepare, Payment and so on).']];
 
 export async function settingsView(main) {
   if (!can.configure) { mount(main, html`<header class="page-head"><h1>Settings</h1></header>${emptyHtml("You don't have access to settings", 'Only the superuser can change settings.')}`); return; }
@@ -50,8 +50,8 @@ export async function settingsView(main) {
         <div class="section-head"><h2>Lists</h2></div>
         <p class="muted">The choices offered in drop-down boxes. Items are never deleted: archive one to stop it being offered. Anything already recorded keeps its wording.</p>
         ${LISTS.map(([key, title, hint]) => html`<h3>${title}</h3><p class="muted-small">${hint}</p>
-          <table class="grid keep compact"><tbody>${listItems.filter((i) => i.list === key).map((i) => html`<tr class="${i.archived_at ? 'row-off' : ''}"><td>${i.name}${i.archived_at ? html` <span class="tag">Archived</span>` : ''}</td>
-            <td class="act"><button class="btn btn-sm" data-action="li-rename" data-id="${i.id}">Rename</button> <button class="btn btn-sm" data-action="li-toggle" data-id="${i.id}">${i.archived_at ? 'Restore' : 'Archive'}</button></td></tr>`)}</tbody></table>
+          <table class="grid keep compact"><tbody>${listItems.filter((i) => i.list === key).map((i) => html`<tr class="${i.archived_at ? 'row-off' : ''}"><td>${i.name}${i.list === 'task_outcome' && i.ends_work ? html` <span class="tag tag-kind">Ends the work</span>` : ''}${i.archived_at ? html` <span class="tag">Archived</span>` : ''}</td>
+            <td class="act"><button class="btn btn-sm" data-action="li-rename" data-id="${i.id}">Change</button> <button class="btn btn-sm" data-action="li-toggle" data-id="${i.id}">${i.archived_at ? 'Restore' : 'Archive'}</button></td></tr>`)}</tbody></table>
           <p><button class="btn btn-sm" data-action="li-add" data-list="${key}">Add to this list</button></p>`)}
       </section>
       <section class="settings-block" id="set-dates">
@@ -149,10 +149,12 @@ export async function settingsView(main) {
   on(main, {
     jump: (el) => main.querySelector(`#${el.dataset.to}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }),
     invite: () => inviteModal(),
-    'li-add': (el) => openModal({ title: 'Add to the list', submitLabel: 'Add', body: fieldsHtml([{ name: 'name', label: 'Name', required: true, span: 2 }]),
-      onSubmit: async (f) => { const name = f.elements.name.value.trim(); if (!name) throw new Error('Enter a name.'); const max = Math.max(0, ...listItems.filter((i) => i.list === el.dataset.list).map((i) => i.sort_order)); await api.saveListItem({ list: el.dataset.list, name, sort_order: max + 10 }); toast('Added.'); await reload(); } }),
-    'li-rename': (el) => { const i = listItems.find((x) => x.id === el.dataset.id); openModal({ title: 'Rename', submitLabel: 'Save', body: fieldsHtml([{ name: 'name', label: 'Name', required: true, span: 2 }], { name: i.name }),
-      onSubmit: async (f) => { const name = f.elements.name.value.trim(); if (!name) throw new Error('Enter a name.'); await api.saveListItem({ name }, i.id); toast('Saved.'); await reload(); } }); },
+    'li-add': (el) => { const outcome = el.dataset.list === 'task_outcome'; const specs = [{ name: 'name', label: 'Name', required: true, span: 2 }, ...(outcome ? [{ name: 'ends_work', label: 'Ends the work (may finish with nothing more needed)', type: 'checkbox', span: 2 }] : [])];
+      openModal({ title: 'Add to the list', submitLabel: 'Add', body: fieldsHtml(specs),
+        onSubmit: async (f) => { const name = f.elements.name.value.trim(); if (!name) throw new Error('Enter a name.'); const max = Math.max(0, ...listItems.filter((i) => i.list === el.dataset.list).map((i) => i.sort_order)); await api.saveListItem({ list: el.dataset.list, name, sort_order: max + 10, ...(outcome ? { ends_work: !!f.elements.ends_work.checked } : {}) }); toast('Added.'); await reload(); } }); },
+    'li-rename': (el) => { const i = listItems.find((x) => x.id === el.dataset.id); const outcome = i.list === 'task_outcome'; const specs = [{ name: 'name', label: 'Name', required: true, span: 2 }, ...(outcome ? [{ name: 'ends_work', label: 'Ends the work (may finish with nothing more needed)', type: 'checkbox', span: 2 }] : [])];
+      openModal({ title: 'Change list item', submitLabel: 'Save', body: fieldsHtml(specs, { name: i.name, ends_work: i.ends_work }),
+        onSubmit: async (f) => { const name = f.elements.name.value.trim(); if (!name) throw new Error('Enter a name.'); await api.saveListItem({ name, ...(outcome ? { ends_work: !!f.elements.ends_work.checked } : {}) }, i.id); toast('Saved.'); await reload(); } }); },
     'li-toggle': async (el) => { const i = listItems.find((x) => x.id === el.dataset.id); try { await api.saveListItem({ archived_at: i.archived_at ? null : new Date().toISOString() }, i.id); await reload(); } catch (e) { toast(e.message, 'error'); } },
     'member-type': (el) => memberTypeModal(memberBy(el)),
     'member-suspend': (el) => memberStatusModal(memberBy(el), 'disabled'),

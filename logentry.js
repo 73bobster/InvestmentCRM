@@ -166,23 +166,39 @@ export function openLog(preset = {}) {
 }
 
 // ---- Tasks -------------------------------------------------------------------------------------------------------------------
-// Close a task: say what happened, then either set the next step or say why nothing more is needed.
+// Record the outcome of a task: choose an outcome, say what happened, then set the next step.
+// Only outcomes marked "ends the work" in Settings (such as Resolved) may finish with "nothing more needed".
 export function openCompleteTask(task) {
+  const outcomes = D.lists.filter((l) => l.list === 'task_outcome' && !l.archived_at);
   const dlg = openModal({
-    title: 'Close this task', submitLabel: 'Close task', wide: true,
+    title: 'Record outcome', submitLabel: 'Save outcome', wide: true,
     body: html`<p><strong>${task.title}</strong>${task.party_id ? html`<br><span class="muted">${api.partyPath(task.party_id)}</span>` : ''}</p>
-      ${field({ name: 'outcome', label: 'What happened?', type: 'textarea', rows: 3, required: true })}
-      ${followupHtml({ heading: 'And what is next?', intro: 'Closing a task creates the next one, or records why there is nothing more to do.', taskLabel: 'Set the next step', noneLabel: 'Nothing more needed', owner: task.owner_id, titleLabel: 'Next step' })}`,
+      <div class="form-grid">
+        <div class="field span-2"><label for="f-outcome_code">Outcome <span class="req" aria-hidden="true">*</span></label>
+          <select id="f-outcome_code" name="outcome_code" required><option value="">Choose the outcome</option>${outcomes.map((o) => html`<option value="${o.name}" data-ends="${o.ends_work ? 1 : 0}">${o.name}</option>`)}</select></div>
+        ${field({ name: 'outcome', label: 'What happened?', type: 'textarea', rows: 3, required: true, span: 2 })}
+      </div>
+      ${followupHtml({ heading: 'And what is next?', intro: 'Every outcome sets the next step. Only an outcome that ends the work, such as Resolved, can say nothing more is needed.', taskLabel: 'Set the next step', noneLabel: 'Nothing more needed', owner: task.owner_id, titleLabel: 'Next step' })}`,
     onSubmit: async (form) => {
-      const outcome = form.elements.outcome.value.trim();
+      const code = form.elements.outcome_code.value; const outcome = form.elements.outcome.value.trim();
+      if (!code) throw new Error('Choose the outcome.');
       if (outcome.length < 3) throw new Error('Say what happened.');
       const fu = readFollowup(form);
-      await api.completeTask({ id: task.id, outcome, mode: fu.mode === 'task' ? 'next_task' : 'none', next: fu.mode === 'task' ? { title: fu.title, due_on: fu.due_on, owner_id: fu.owner_id } : null, reason: fu.reason, comment: fu.comment });
-      toast(fu.mode === 'task' ? `Closed. Next step due ${fmtDateShort(fu.due_on)}.` : 'Closed.');
+      await api.completeTask({ id: task.id, outcome_code: code, outcome, mode: fu.mode === 'task' ? 'next_task' : 'none', next: fu.mode === 'task' ? { title: fu.title, due_on: fu.due_on, owner_id: fu.owner_id } : null, reason: fu.reason, comment: fu.comment });
+      toast(fu.mode === 'task' ? `Outcome recorded. Next step due ${fmtDateShort(fu.due_on)}.` : 'Outcome recorded.');
       setTimeout(() => afterChange('tasks'), 0);
     },
   });
-  wireFollowup(dlg);
+  const none = dlg.querySelector('input[name="fu_mode"][value="none"]');
+  const gate = () => {
+    const sel = dlg.querySelector('[name="outcome_code"]'); const ends = sel.selectedOptions[0]?.dataset.ends === '1';
+    none.disabled = !ends;
+    none.closest('label').title = ends ? '' : 'Only an outcome that ends the work (such as Resolved) can finish with nothing more needed.';
+    if (!ends && none.checked) dlg.querySelector('input[name="fu_mode"][value="task"]').checked = true;
+    syncFollowup(dlg);
+  };
+  wireFollowup(dlg, { change: (e) => { if (e.target.name === 'outcome_code') gate(); } });
+  gate();
 }
 
 // Add a task, or change one that is open. Moving the date needs a reason, which is counted.
@@ -196,10 +212,11 @@ export function openTaskForm(task = null, preset = {}) {
       <div class="field"><label for="f-due_on">Due <span class="req" aria-hidden="true">*</span></label><input type="date" id="f-due_on" name="due_on" required min="${todayStr()}" value="${t.due_on}"></div>
       <div class="field"><label for="f-owner_id">Who is it for?</label><select id="f-owner_id" name="owner_id">${peopleOptions(t.owner_id)}</select></div>
       <div class="field span-2" id="resched" hidden><label for="f-reschedule_reason">Why is the date moving? <span class="req" aria-hidden="true">*</span></label><input type="text" id="f-reschedule_reason" name="reschedule_reason" placeholder="e.g. Waiting for their answer">${task?.reschedule_count ? html`<p class="hint">Already moved ${task.reschedule_count} ${task.reschedule_count === 1 ? 'time' : 'times'}.</p>` : ''}</div>
+      <div class="field"><label for="f-category">Category</label><select id="f-category" name="category"><option value="">None</option>${[...new Set([...D.listNames('task_category'), ...(t.category ? [t.category] : [])])].map((c) => html`<option ${c === t.category ? raw('selected') : ''}>${c}</option>`)}</select></div>
       <div class="field span-2"><label for="f-party_id">About</label><select id="f-party_id" name="party_id"><option value="">Nobody in particular</option>${partyOptions(t.party_id)}</select></div>
     </div>`,
     onSubmit: async (form) => {
-      const v = readForm(form, [{ name: 'title' }, { name: 'details' }, { name: 'due_on' }, { name: 'owner_id' }, { name: 'party_id' }, { name: 'reschedule_reason' }]);
+      const v = readForm(form, [{ name: 'title' }, { name: 'details' }, { name: 'due_on' }, { name: 'owner_id' }, { name: 'party_id' }, { name: 'category' }, { name: 'reschedule_reason' }]);
       const moved = task && v.due_on !== task.due_on;
       if (moved && (v.reschedule_reason || '').length < 3) throw new Error('Say why the date is moving.');
       await api.saveTask({ id: task?.id, ...v, contact_id: task?.contact_id, agreement_id: task?.agreement_id });

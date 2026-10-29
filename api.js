@@ -59,8 +59,14 @@ export const auth = {
 
 // ---- Organisation context -----------------------------------------------
 export async function loadMemberships(userId) {
-  const rows = ok(await from('memberships').select('*, organisation:organisations(*)').eq('user_id', userId).eq('status', 'active'));
-  return rows.filter((m) => m.organisation);
+  // An empty answer can be the database briefly not recognising the person, so look again (with a fresh token) before believing it.
+  for (let attempt = 0; ; attempt++) {
+    const rows = ok(await from('memberships').select('*, organisation:organisations(*)').eq('user_id', userId).eq('status', 'active'));
+    const mine = rows.filter((m) => m.organisation);
+    if (mine.length || attempt >= 2) return mine;
+    await neon.getToken(true).catch(() => {});
+    await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+  }
 }
 // Straight after sign-up the database can take a moment to see the new account, so "Not signed in" is retried a few times.
 export async function acceptInvitation(token) {
@@ -140,16 +146,28 @@ const REFRESH_AFTER = { // what else to re-read when one of these changes (figur
   payments: ['payments', 'rollups', 'tasks'],
   targets: ['targets', 'targetRollups', 'tasks'],
 };
+// The database can, rarely, fail to recognise the signed-in person for a moment and then quietly return nothing instead of an
+// error. Every load therefore also asks for the person's own membership (which must exist); if that comes back empty the
+// whole read is thrown away, a fresh sign-in token is fetched and it is tried again.
+async function trusted(read) {
+  for (let attempt = 0; ; attempt++) {
+    const [result, me] = await Promise.all([read(), all(() => from('memberships').select('user_id').eq('organisation_id', org()).eq('user_id', state.user.id).order('user_id'))]);
+    if (me.length) return result;
+    if (attempt >= 4) throw new Error('Could not confirm your sign-in with the database. Refresh the page to try again.');
+    await neon.getToken(true).catch(() => {});
+    await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+  }
+}
 export async function loadAll() {
   const names = Object.keys(LOADERS);
-  const rows = await Promise.all(names.map((n) => LOADERS[n]()));
+  const rows = await trusted(() => Promise.all(names.map((n) => LOADERS[n]())));
   names.forEach((n, i) => { D[n] = rows[i]; });
   D.loaded = true;
   index();
 }
 export async function reload(...names) {
   const want = [...new Set(names.flatMap((n) => REFRESH_AFTER[n] || [n]))];
-  const rows = await Promise.all(want.map((n) => LOADERS[n]()));
+  const rows = await trusted(() => Promise.all(want.map((n) => LOADERS[n]())));
   want.forEach((n, i) => { D[n] = rows[i]; });
   index();
 }
