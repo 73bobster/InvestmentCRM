@@ -24,6 +24,8 @@ declare v_id uuid;
 begin
   insert into public.agreements (organisation_id, party_id, title, kind, status, amount, amount_basis, start_on, end_on, has_exclusivity, exclusivity_detail, exclusivity_ends_on, end_action, owner_id, notes, created_by)
   values (p_org, p_party, p_title, p_kind, p_status, p_amount, p_basis, p_start, p_end, p_excl, p_excl_detail, p_excl_end, p_end_action, p_owner, p_notes, p_owner) returning id into v_id;
+  -- every deal holds at least one component (payments are seeded by hand below, so no payout schedule)
+  insert into public.agreement_components (organisation_id, agreement_id, kind, amount, amount_basis, payout_frequency, created_by) values (p_org, v_id, p_kind, p_amount, p_basis, 'none', p_owner);
   return v_id;
 end $$;
 
@@ -120,7 +122,7 @@ begin
   perform pg_temp.mk_tgt(v_org, a4, 'product', 'Guinness Draught 50L keg', 600, 'kegs', '2026-01-01', '2026-12-31', null);
   perform pg_temp.mk_rev(v_org, a4, '2026-09-20', 'on_track', 'Ahead of target after the autumn promotion.', null, null);
 
-  a5 := pg_temp.mk_agr(v_org, peroni, 'Peroni listing rebate 2027', 'Rebate', 'agreed', 18000, 'per_year', '2027-01-01', '2027-12-31', false, null, null, 'Review', priya, 'Terms agreed in principle; contract in draft.');
+  a5 := pg_temp.mk_agr(v_org, peroni, 'Peroni listing rebate 2027', 'Retro / rebate', 'agreed', 18000, 'per_year', '2027-01-01', '2027-12-31', false, null, null, 'Review', priya, 'Terms agreed in principle; contract in draft.');
   perform pg_temp.mk_pay(v_org, a5, '2027-03-31', 9000, 'planned', null, null);
   perform pg_temp.mk_pay(v_org, a5, '2027-09-30', 9000, 'planned', null, null);
   perform pg_temp.mk_tgt(v_org, a5, 'all_sales', null, 1200, 'cases', '2027-01-01', '2027-12-31', 'Bottled Peroni across the estate');

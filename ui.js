@@ -106,6 +106,7 @@ const ICONS = {
   brands: '<path d="M4 20V9l8-5 8 5v11M9 20v-6h6v6"/>',
   customers: '<path d="M5 20V8h14v12M3 20h18M9 12h2M13 12h2M9 16h2M13 16h2M9 4h6v4H9z"/>',
   investments: '<path d="M3 20h18M6 20v-6M11 20V9M16 20v-9M21 20V5"/>',
+  accruals: '<path d="M4 4h16v16H4zM4 9h16M9 9v11M14 14h3M14 17h3"/>',
   contacts: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 3-5.5 6.5-5.5s6.5 1.9 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c2 .6 3.5 2.1 3.5 5.2"/>',
   audit: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   settings: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',

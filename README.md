@@ -4,7 +4,7 @@ An internal mini-CRM and investment tracker for Alchemy Drinks.
 
 - **Brand owners** (gold, money in): owner > brand > product.
 - **Customers** (teal, money out): group > sub-group(s) > pub or outlet (four levels at most).
-- Key contacts, meetings, notes, decisions, tasks, investments (one type with a *kind*), exclusivity, volume targets (no actuals), manually recorded shortfalls, diary and reminders.
+- Key contacts, meetings, notes, decisions, tasks, deals (each holding several *components*: listing fee, retro / rebate, marketing support, customer investment, new business ...), the brands / products or sub-groups / pubs a deal covers, what the investment was used for, payout schedules, exclusivity, volume targets (no actuals), manually recorded shortfalls, accruals (forecast and actual) with a Finance download, diary and reminders.
 - Every note, call, email, meeting, visit or decision must end with a **revisit** task or a **reason and comment** for none. Closing a task works the same way.
 - Everything changed is in the audit log. Nothing is deleted: records are archived.
 - Roles: Superuser, Admin (read and write), Review only. Everyone sees everything in their organisation.
@@ -26,6 +26,8 @@ Plain HTML, CSS and JavaScript modules: no build step. Same look, feel and struc
 1. `migrations/0001_core.sql`: organisations, users, invitations, audit log, security helpers.
 2. `migrations/0002_crm.sql`: parties, contacts, investments, payments, targets, reviews, entries, tasks, reminders, roll-up views.
 3. `migrations/0003_demo_support.sql`: demo helper.
+4. `migrations/0004_outcomes.sql`: task outcomes and categories.
+5. `migrations/0005_components_accruals.sql`: deal components, coverage, deal length, payout schedules, uses, accruals.
 4. `seed/demo.sql`: fictional demo organisation (replace `__OWNER_EMAIL__`).
 
 Apply with `tools/apply-sql.mjs`. Create an organisation (owner only, from the SQL editor):

@@ -6,7 +6,7 @@ import { state, can, SIDE, NODE_LABEL, CHILD_TYPES, ROOT_TYPES, PARTY_STATUS, EN
 import { openLog, openTaskForm, peopleOptions, contactsFor, agreementsFor, afterChange } from './logentry.js';
 import { taskRow, wireTasks } from './tasks.js';
 import { openContactForm, contactsTable, contactHandlers } from './contacts.js';
-import { openAgreementForm, agreementsTable, amountText } from './investments.js';
+import { openAgreementForm, openCoverageForm, agreementsTable, amountText, covers, liveComponents } from './investments.js';
 import { auditTable } from './audit.js';
 import { html, raw, mount, on, openModal, field, readForm, toast, pill, facts, icon, emptyHtml, fmtMoney, fmtMoneyShort, fmtInt, fmtDateShort, fmtDayTime, toLocalInput, fromLocalInput, relDays, todayStr, plural } from './ui.js';
 
@@ -147,7 +147,7 @@ export async function partyView(main, side, id, q = {}) {
     const contacts = D.contacts.filter((c) => idSet.has(c.party_id) && !c.archived_at);
     const agreements = D.agreements.filter((a) => idSet.has(a.party_id) && !a.archived_at).sort((a, b) => a.title.localeCompare(b.title));
     const canAddKid = can.write && !party.archived_at && CHILD_TYPES[party.node_type].length && api.depthOf(id) < MAX_DEPTH;
-    const tabs = [['overview', 'Overview'], ['timeline', 'Timeline'], ['contacts', 'Contacts'], ['tasks', 'Tasks'], ['investments', 'Investments'], ...(childrenOf(id, true).length ? [['below', 'Below']] : []), ...(can.audit ? [['history', 'History']] : [])];
+    const tabs = [['overview', 'Overview'], ['timeline', 'Timeline'], ['contacts', 'Contacts'], ['tasks', 'Tasks'], ['investments', 'Investments'], ...(api.descendantIds(id).length ? [['coverage', S.coverTab]] : []), ...(childrenOf(id, true).length ? [['below', 'Below']] : []), ...(can.audit ? [['history', 'History']] : [])];
     const belowToggle = kids.length ? html`<label class="check small"><input type="checkbox" data-toggle="below" ${ui.below ? 'checked' : ''}> <span>Include everything below</span></label>` : '';
     const rollRow = (label, key, fmt = money) => html`<tr><th scope="row">${label}</th><td>${fmt(r?.[`own_${key}`])}</td>${kids.length ? html`<td>${fmt(total(r, key))}</td>` : ''}</tr>`;
 
@@ -180,7 +180,15 @@ export async function partyView(main, side, id, q = {}) {
         ${openTasks.length ? html`<ul class="tasks">${openTasks.map((t) => taskRow(t, { showParty: ui.below && kids.length > 0 }))}</ul>` : emptyHtml('No open tasks', isQuiet(party, tasksSum) ? 'This has gone quiet. Log something or add a task so it is revisited.' : '')}
         ${closed.length ? html`<details><summary>Outcome recorded or cancelled (${closed.length})</summary><ul class="tasks">${closed.map((t) => taskRow(t, { showParty: ui.below && kids.length > 0 }))}</ul></details>` : ''}`;
     } else if (ui.tab === 'investments') {
-      panel = html`${w ? html`<p class="inline-actions"><button class="btn btn-primary" data-action="a-add">Add an investment</button></p>` : ''}${agreements.length ? agreementsTable(agreements, { showParty: ui.below && kids.length > 0 }) : emptyHtml('No investments yet', side === 'brand' ? 'Add the support this brand owner provides.' : 'Add the investment made in this customer.')}`;
+      panel = html`${w ? html`<p class="inline-actions"><button class="btn btn-primary" data-action="a-add">Add a deal</button></p>` : ''}${agreements.length ? agreementsTable(agreements, { showParty: ui.below && kids.length > 0 }) : emptyHtml('No deals yet', side === 'brand' ? 'Add the support this brand owner provides.' : 'Add the investment made in this customer.')}`;
+    } else if (ui.tab === 'coverage') {
+      const deals = (D.agreementsOf.get(id) || []).filter((a) => !a.archived_at && ['proposed', 'agreed', 'live'].includes(a.status)).sort((a, b) => a.title.localeCompare(b.title));
+      const order = []; const walk = (pid, depth) => { for (const c of childrenOf(pid, false).sort((x, y) => x.name.localeCompare(y.name))) { order.push([c, depth]); walk(c.id, depth + 1); } }; walk(id, 0);
+      const mark = (a, c) => { const v = covers(a, c.id); return v === 'yes' ? html`<span class="tick" title="Covered">&#10003;</span>` : v === 'all' ? html`<span class="tick tick-all" title="Covered: the deal covers everything underneath">&#10003;</span>` : html`<span class="muted" title="Not covered">&ndash;</span>`; };
+      panel = deals.length ? html`<p class="muted">${S.coverHelp} A solid tick means the deal covers it by name; a pale tick means the deal covers everything under ${party.name}.</p>
+        <div class="scroll"><table class="grid keep cover-grid"><thead><tr><th>${S.coverTab}</th>${deals.map((a) => html`<th><a href="#/investments/${a.id}">${a.title}</a>${w ? html`<br><button class="link" data-action="cover" data-id="${a.id}">Change</button>` : ''}</th>`)}</tr></thead>
+          <tbody>${order.map(([c, d]) => html`<tr><td data-label="${S.coverTab}"><div class="tree-name indent-${Math.min(d, 3)}"><a href="${hrefOf(c)}">${c.name}</a> <span class="tag tag-kind">${NODE_LABEL[c.node_type]}</span></div></td>${deals.map((a) => html`<td data-label="${a.title}" class="cover-cell">${mark(a, c)}</td>`)}</tr>`)}</tbody></table></div>`
+        : emptyHtml('No deals yet', `Add a deal with this ${NODE_LABEL[party.node_type].toLowerCase()}, then tick what it covers.`);
     } else if (ui.tab === 'below') {
       const all = childrenOf(id, true).sort((a, b) => a.name.localeCompare(b.name));
       panel = html`${canAddKid ? html`<p class="inline-actions">${CHILD_TYPES[party.node_type].map((t) => html`<button class="btn" data-action="add-child" data-type="${t}">Add a ${NODE_LABEL[t].toLowerCase()}</button>`)}</p>` : ''}
@@ -196,7 +204,7 @@ export async function partyView(main, side, id, q = {}) {
       <p><span class="tag tag-${side}">${S.label}: ${S.flow}</span> <span class="tag tag-kind">${NODE_LABEL[party.node_type]}</span> ${pill(party.status, PARTY_STATUS[party.status])} ${party.archived_at ? html`<span class="tag">Archived</span>` : ''} ${isQuiet(party, tasksSum) ? html`<span class="tag" style="background:var(--soon-bg);color:var(--soon)">Gone quiet</span>` : ''}</p>
       ${canAddKid ? html`<p class="inline-actions">${CHILD_TYPES[party.node_type].map((t) => html`<button class="btn btn-sm" data-action="add-child" data-type="${t}">Add a ${NODE_LABEL[t].toLowerCase()}</button>`)}</p>` : ''}
       <div class="tabs" role="tablist">${tabs.map(([k, l]) => html`<button class="tab" role="tab" data-tab="${k}" ${ui.tab === k ? raw('aria-current="page" aria-selected="true"') : raw('aria-selected="false"')}>${l}</button>`)}</div>
-      ${['overview', 'history'].includes(ui.tab) ? '' : html`<p>${belowToggle}</p>`}
+      ${['overview', 'history', 'coverage'].includes(ui.tab) ? '' : html`<p>${belowToggle}</p>`}
       ${panel}`);
     wireTasks(main, {
       log: () => openLog({ party_id: id }),
@@ -206,6 +214,7 @@ export async function partyView(main, side, id, q = {}) {
       'add-child': (el) => { const dlg = openPartyForm(null, { side, parent_id: id }); const sel = dlg.querySelector('[name="node_type"]'); if (sel && el.dataset.type) sel.value = el.dataset.type; },
       'c-add': () => openContactForm(null, { party_id: id }),
       'a-add': () => openAgreementForm(null, { party_id: id }),
+      cover: (el) => openCoverageForm(D.agreementById.get(el.dataset.id)),
       outcome: (el) => { const e = D.entryById.get(el.dataset.id); openLog({ kind: 'note', title: `Outcome: ${e.title}`, related_entry_id: e.id, party_id: e.party_id, contact_id: e.contact_id, agreement_id: e.agreement_id, occurred_at: e.occurred_at }); },
       'e-edit': (el) => openEntryEdit(D.entryById.get(el.dataset.id)),
       ...contactHandlers,

@@ -16,14 +16,15 @@ export const ROLE_ORDER = ['superuser', 'admin', 'reviewer'];
 export const ACCESS_SUMMARY = [
   ['Brand owners, customers, contacts', ['Full', 'Full', 'View']],
   ['Meetings, notes, decisions and tasks', ['Full', 'Full', 'View']],
-  ['Investments, payments and volume targets', ['Full', 'Full', 'View']],
+  ['Investments, deal components, payments and volume targets', ['Full', 'Full', 'View']],
+  ['Accruals (forecast and actuals) and the Finance report', ['Full', 'Full', 'View']],
   ['Audit log', ['View', 'View', 'None']],
   ['Settings, lists and users', ['Full', 'None', 'None']],
 ];
 
 export const SCREENS = {
   dashboard: 'Dashboard', tasks: 'Tasks', diary: 'Diary', brands: 'Brand owners', customers: 'Customers',
-  investments: 'Investments', contacts: 'Contacts', audit: 'Audit log', settings: 'Settings', help: 'Help',
+  investments: 'Investments', accruals: 'Accruals', contacts: 'Contacts', audit: 'Audit log', settings: 'Settings', help: 'Help',
 };
 export const screenName = (id) => SCREENS[id] || 'This screen';
 export const MEMBER_STATUS_LABEL = { active: 'Active', disabled: 'Suspended', removed: 'Removed' };
@@ -48,8 +49,8 @@ export function clearState() {
 // ---- Words used for the two sides ---------------------------------------------------------------------------------------
 // brand = a brand owner (money comes IN to Alchemy). customer = a pub or restaurant group (money goes OUT from Alchemy).
 export const SIDE = {
-  brand: { label: 'Brand owner', plural: 'Brand owners', money: 'Brand support', flow: 'money in', paid: 'Received', unpaid: 'To receive', route: 'brands', section: 'brand' },
-  customer: { label: 'Customer', plural: 'Customers', money: 'Customer investment', flow: 'money out', paid: 'Paid', unpaid: 'To pay', route: 'customers', section: 'customer' },
+  brand: { label: 'Brand owner', plural: 'Brand owners', money: 'Brand support', flow: 'money in', coverTab: 'Brands and products', coverHelp: 'Which brands and products each deal covers.', paid: 'Received', unpaid: 'To receive', route: 'brands', section: 'brand' },
+  customer: { label: 'Customer', plural: 'Customers', money: 'Customer investment', flow: 'money out', coverTab: 'Sub-groups and pubs', coverHelp: 'Which sub-groups and pubs each deal covers.', paid: 'Paid', unpaid: 'To pay', route: 'customers', section: 'customer' },
 };
 export const NODE_LABEL = { brand_owner: 'Brand owner', brand: 'Brand', product: 'Product', group: 'Group', sub_group: 'Sub-group', site: 'Pub or outlet' };
 // What can be added underneath each type (the database checks this too).
@@ -60,3 +61,7 @@ export const AGREEMENT_STATUS = { proposed: 'Proposed', agreed: 'Agreed', live: 
 export const ENTRY_KIND = { note: 'Note', call: 'Call', email: 'Email', meeting: 'Meeting', visit: 'Visit', decision: 'Decision' };
 export const REVIEW_STATUS = { on_track: 'On track', at_risk: 'At risk', missed: 'Missed', met: 'Met' };
 export const SHORTFALL_OUTCOME = { pending: 'To be decided', waived: 'Waived', clawed_back: 'Clawed back', carried_forward: 'Carried forward' };
+
+// How often a component is paid out (payments are created for each date and each makes a reminder) and how often it is accrued.
+export const PAYOUT_FREQ = { none: 'Payments added by hand', one_off: 'One payment', monthly: 'Monthly', quarterly: 'Quarterly', half_yearly: 'Half-yearly', annual: 'Annually' };
+export const ACCRUAL_FREQ = { monthly: 'Monthly', quarterly: 'Quarterly', annual: 'Annually' };

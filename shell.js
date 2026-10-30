@@ -14,6 +14,7 @@ const NAV = [
   { id: 'brands', label: 'Brand owners', href: '#/brands', tone: 'brand' },
   { id: 'customers', label: 'Customers', href: '#/customers', tone: 'customer' },
   { id: 'investments', label: 'Investments', href: '#/investments' },
+  { id: 'accruals', label: 'Accruals', href: '#/accruals' },
   { id: 'contacts', label: 'Contacts', href: '#/contacts' },
   { id: 'audit', label: 'Audit log', href: '#/audit', when: () => can.audit },
   { id: 'settings', label: 'Settings', href: '#/settings', when: () => can.configure },

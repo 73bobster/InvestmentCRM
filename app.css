@@ -593,3 +593,11 @@ a.tag-link:hover { text-decoration: underline; }
 .dash-panel .task-act { grid-column: 1 / -1; justify-content: flex-start; }
 .dash-panel .tasks { border: 0; border-radius: 0; }
 @media (max-width: 860px) { .task-due { text-align: left; } .task-act { justify-content: flex-start; } }
+
+/* Coverage checklist and matrix */
+.check-tree { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cover-grid th, .cover-grid td { text-align: center; }
+.cover-grid th:first-child, .cover-grid td:first-child { text-align: left; }
+.tick { font-weight: 700; color: var(--brand, currentColor); }
+.tick-all { opacity: .45; }
+.cover-cell { font-size: 1.1rem; }

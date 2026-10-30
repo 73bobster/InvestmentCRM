@@ -124,7 +124,7 @@ export async function listAuditFor(ids, limit = 100) {
 export function recordFamily(partyId) {
   const ids = [partyId];
   ids.push(...(D.entriesOf.get(partyId) || []).map((x) => x.id), ...(D.tasksOf.get(partyId) || []).map((x) => x.id), ...(D.contactsOf.get(partyId) || []).map((x) => x.id));
-  for (const a of D.agreementsOf.get(partyId) || []) ids.push(a.id, ...(D.paymentsOf.get(a.id) || []).map((x) => x.id), ...(D.targetsOf.get(a.id) || []).map((x) => x.id), ...(D.reviewsOf.get(a.id) || []).map((x) => x.id));
+  for (const a of D.agreementsOf.get(partyId) || []) ids.push(a.id, ...(D.componentsOf.get(a.id) || []).map((x) => x.id), ...(D.usesOf.get(a.id) || []).map((x) => x.id), ...(D.paymentsOf.get(a.id) || []).map((x) => x.id), ...(D.targetsOf.get(a.id) || []).map((x) => x.id), ...(D.reviewsOf.get(a.id) || []).map((x) => x.id));
   return ids;
 }
 
@@ -132,7 +132,7 @@ export function recordFamily(partyId) {
 // Everything for the organisation is read once (a handful of requests at the same time) and kept here, indexed, so every
 // screen can show names, paths and roll-ups without asking again. After a change, reload() re-reads only what changed.
 export const D = {
-  loaded: false, parties: [], contacts: [], agreements: [], payments: [], targets: [], reviews: [], entries: [], tasks: [], lists: [], people: [],
+  loaded: false, parties: [], contacts: [], agreements: [], payments: [], targets: [], reviews: [], components: [], scopes: [], uses: [], accruals: [], entries: [], tasks: [], lists: [], people: [],
   rollups: [], targetRollups: [],
 };
 const LOADERS = {
@@ -142,6 +142,10 @@ const LOADERS = {
   payments: () => all(() => from('agreement_payments').select('*').eq('organisation_id', org()).order('due_on').order('id')),
   targets: () => all(() => from('agreement_targets').select('*').eq('organisation_id', org()).order('period_start').order('id')),
   reviews: () => all(() => from('agreement_reviews').select('*').eq('organisation_id', org()).order('reviewed_on', { ascending: false }).order('id')),
+  components: () => all(() => from('agreement_components').select('*').eq('organisation_id', org()).order('created_at').order('id')),
+  scopes: () => all(() => from('agreement_scope').select('*').eq('organisation_id', org()).order('created_at').order('id')),
+  uses: () => all(() => from('investment_uses').select('*').eq('organisation_id', org()).order('used_on', { ascending: false }).order('id')),
+  accruals: () => all(() => from('agreement_accruals').select('*').eq('organisation_id', org()).order('period_start').order('id')),
   entries: () => all(() => from('entries').select('*').eq('organisation_id', org()).order('occurred_at', { ascending: false }).order('id')),
   tasks: () => all(() => from('tasks').select('*').eq('organisation_id', org()).order('due_on').order('id')),
   lists: () => all(() => from('list_items').select('*').eq('organisation_id', org()).order('sort_order').order('name').order('id')),
@@ -157,8 +161,12 @@ const LOADERS = {
 };
 const REFRESH_AFTER = { // what else to re-read when one of these changes (figures and reminders are worked out by the database)
   parties: ['parties', 'rollups', 'targetRollups'],
-  agreements: ['agreements', 'rollups', 'targetRollups', 'tasks'],
-  payments: ['payments', 'rollups', 'tasks'],
+  agreements: ['agreements', 'components', 'scopes', 'accruals', 'payments', 'rollups', 'targetRollups', 'tasks'],
+  components: ['components', 'agreements', 'payments', 'accruals', 'rollups', 'tasks'],
+  scopes: ['scopes'],
+  uses: ['uses'],
+  accruals: ['accruals'],
+  payments: ['payments', 'accruals', 'rollups', 'tasks'],
   targets: ['targets', 'targetRollups', 'tasks'],
 };
 // The database can, rarely, fail to recognise the signed-in person for a moment and then quietly return nothing instead of an
@@ -199,6 +207,11 @@ function index() {
   D.paymentsOf = group(D.payments, 'agreement_id');
   D.targetsOf = group(D.targets, 'agreement_id');
   D.reviewsOf = group(D.reviews, 'agreement_id');
+  D.componentsOf = group(D.components, 'agreement_id');
+  D.componentById = new Map(D.components.map((c) => [c.id, c]));
+  D.scopesOf = group(D.scopes, 'agreement_id');
+  D.usesOf = group(D.uses, 'agreement_id');
+  D.accrualsOf = group(D.accruals, 'agreement_id');
   D.entriesOf = group(D.entries, 'party_id');
   D.entryById = new Map(D.entries.map((e) => [e.id, e]));
   D.tasksOf = group(D.tasks, 'party_id');
@@ -233,6 +246,11 @@ export const saveAgreement = saver('agreements');
 export const savePayment = saver('agreement_payments');
 export const saveTarget = saver('agreement_targets');
 export const saveReview = saver('agreement_reviews');
+export const saveComponent = saver('agreement_components');
+export const saveScope = saver('agreement_scope');
+export const saveUse = saver('investment_uses');
+export const saveAccrual = saver('agreement_accruals');
+export const refreshSchedules = async () => ok(await neon.rpc('schedules_refresh', { p_org: org() }));
 export const saveListItem = saver('list_items');
 export const updateEntry = async (id, values) => ok(await from('entries').update(values).eq('id', id).eq('organisation_id', org()).select().single());
 
