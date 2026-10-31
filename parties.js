@@ -194,7 +194,7 @@ export async function partyView(main, side, id, q = {}) {
       panel = html`${canAddKid ? html`<p class="inline-actions">${CHILD_TYPES[party.node_type].map((t) => html`<button class="btn" data-action="add-child" data-type="${t}">Add a ${NODE_LABEL[t].toLowerCase()}</button>`)}</p>` : ''}
         <table class="grid"><thead><tr><th>Name</th><th>Status</th><th>Investments</th><th>Per year</th><th>Next task</th></tr></thead><tbody>${all.map((c) => { const cr = D.rollupOf.get(c.id); const t = tasksSum.get(c.id); return html`<tr class="${c.archived_at ? 'row-off' : ''}"><td data-label="Name"><a href="${hrefOf(c)}">${c.name}</a> <span class="tag tag-kind">${NODE_LABEL[c.node_type]}</span>${isQuiet(c, tasksSum) ? html` <span class="tag" style="background:var(--soon-bg);color:var(--soon)">Gone quiet</span>` : ''}</td><td data-label="Status">${pill(c.status, PARTY_STATUS[c.status])}</td><td data-label="Investments">${fmtInt(total(cr, 'count'))}</td><td data-label="Per year" class="money">${total(cr, 'per_year') ? money(total(cr, 'per_year')) : ''}</td><td data-label="Next task">${t?.next ? fmtDateShort(t.next) : html`<span class="muted">None</span>`}</td></tr>`; })}</tbody></table>`;
     } else {
-      panel = history.length ? auditTable(history) : emptyHtml('No history', 'Changes to this record will appear here.');
+      panel = history.length ? html`${kids.length ? html`<p class="muted-small">Includes changes to everything underneath ${party.name}.</p>` : ''}${auditTable(history)}` : emptyHtml('No history', 'Changes to this record will appear here.');
     }
 
     const crumbs = api.ancestors(id);

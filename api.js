@@ -120,11 +120,15 @@ export async function listAuditFor(ids, limit = 100) {
   rows.sort((a, b) => (a.occurred_at < b.occurred_at ? 1 : a.occurred_at > b.occurred_at ? -1 : b.id - a.id));
   return rows.slice(0, limit);
 }
-// Everything that belongs to a record: itself plus its notes, tasks, contacts, investments and their payments, targets and reviews.
+// Everything that belongs to a record, and to every record underneath it (brands, products, sub-groups, pubs): the records themselves plus their
+// notes, tasks, contacts, investments and each investment's components, uses, payments, targets and reviews.
 export function recordFamily(partyId) {
-  const ids = [partyId];
-  ids.push(...(D.entriesOf.get(partyId) || []).map((x) => x.id), ...(D.tasksOf.get(partyId) || []).map((x) => x.id), ...(D.contactsOf.get(partyId) || []).map((x) => x.id));
-  for (const a of D.agreementsOf.get(partyId) || []) ids.push(a.id, ...(D.componentsOf.get(a.id) || []).map((x) => x.id), ...(D.usesOf.get(a.id) || []).map((x) => x.id), ...(D.paymentsOf.get(a.id) || []).map((x) => x.id), ...(D.targetsOf.get(a.id) || []).map((x) => x.id), ...(D.reviewsOf.get(a.id) || []).map((x) => x.id));
+  const ids = [];
+  for (const pid of [partyId, ...descendantIds(partyId)]) {
+    ids.push(pid);
+    ids.push(...(D.entriesOf.get(pid) || []).map((x) => x.id), ...(D.tasksOf.get(pid) || []).map((x) => x.id), ...(D.contactsOf.get(pid) || []).map((x) => x.id));
+    for (const a of D.agreementsOf.get(pid) || []) ids.push(a.id, ...(D.componentsOf.get(a.id) || []).map((x) => x.id), ...(D.usesOf.get(a.id) || []).map((x) => x.id), ...(D.paymentsOf.get(a.id) || []).map((x) => x.id), ...(D.targetsOf.get(a.id) || []).map((x) => x.id), ...(D.reviewsOf.get(a.id) || []).map((x) => x.id));
+  }
   return ids;
 }
 
