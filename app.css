@@ -79,7 +79,7 @@ legend { padding: 0 6px; font-weight: 700; }
 .auth-line { margin: 0; max-width: 34ch; font-size: .9375rem; line-height: 1.6; color: #e4e4e4; }
 .auth-main { display: grid; place-items: center; padding: 32px 20px; background: var(--surface); }
 .auth-card { width: 100%; max-width: 400px; }
-.auth-card .logo { width: 220px; margin-bottom: 28px; }
+.auth-appname { margin: 0 0 28px; }
 .auth-card h1 { margin-bottom: 20px; font-size: 1.25rem; }
 .auth-alt { margin-top: 20px; font-size: .8125rem; color: var(--ink-2); line-height: 1.9; }
 

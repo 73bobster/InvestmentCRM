@@ -13,7 +13,7 @@ export const SCREENS = [
   ['audit', 'Audit log', '1.2610291815'],
   ['settings', 'Settings', '1.2610301400'],
   ['help', 'Help', '1.2610301400'],
-  ['signin', 'Sign in', '1.2610291815'],
+  ['signin', 'Sign in', '1.2611082135'],
 ];
 const BY_ID = new Map(SCREENS.map(([id, label, version]) => [id, { label, version }]));
 export const screenLabel = (id) => BY_ID.get(id)?.label || '';

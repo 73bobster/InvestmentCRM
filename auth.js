@@ -1,6 +1,6 @@
 // Signed-out screens: sign in, create account (only with an invitation), and joining with a code.
 import * as api from './api.js';
-import { html, mount, on, logoImg, wireLogos } from './ui.js';
+import { html, mount, on } from './ui.js';
 import { applyBrand } from './shell.js';
 import { CONFIG } from './config.js';
 import { versionOf } from './versions.js';
@@ -13,11 +13,10 @@ function frame(inner) {
     <div class="auth">
       <aside class="auth-side" aria-hidden="true">
         <div class="auth-banners"><span class="banner">Every brand owner</span><span class="banner">Every customer</span><span class="banner">Every follow-up</span></div>
-        <p class="auth-line">${CONFIG.appName} for ${CONFIG.brand?.name || 'your business'}, in one place.</p>
+        <p class="auth-line">Brand owners, customers and follow-ups, in one place.</p>
       </aside>
-      <main class="auth-main" id="main"><div class="auth-card"><div class="brand-stack">${logoImg(CONFIG.brand?.logoUrl, CONFIG.brand?.name || CONFIG.appName)}</div>${inner}<p class="auth-version">${versionOf('signin')}</p></div></main>
+      <main class="auth-main" id="main"><div class="auth-card"><p class="auth-appname"><span class="banner">${CONFIG.appName}</span></p>${inner}<p class="auth-version">${versionOf('signin')}</p></div></main>
     </div>`);
-  wireLogos(root());
 }
 
 function wireForm(handler) {
