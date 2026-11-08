@@ -28,5 +28,6 @@ export async function helpView(main) {
     <h2>Nothing is deleted</h2>
     <p>Records are archived instead, so they can be brought back. Every change is recorded in the audit log (admins and the superuser), and each record has a History tab.</p>
     <h2>User types</h2>
-    <p><strong>Superuser</strong>: everything, including settings and inviting users. <strong>Admin</strong>: read and write, and the audit log. <strong>Review only</strong>: can see everything but cannot change anything.</p>`);
+    <p><strong>Superuser</strong>: everything, including settings and inviting users. <strong>Admin</strong>: read and write, and the audit log. <strong>Review only</strong>: can see everything but cannot change anything.</p>
+    <p>The superuser can choose which screens each user type sees, and in what order, under <strong>Screens</strong> in Settings. A switched-off screen is hidden from that user type's menu and shows a short "switched off" page if opened from a link. This only hides screens; it does not make data private, and the superuser always keeps Settings.</p>`);
 }

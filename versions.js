@@ -11,7 +11,7 @@ export const SCREENS = [
   ['accruals', 'Accruals', '1.2610301400'],
   ['contacts', 'Contacts', '1.2610291815'],
   ['audit', 'Audit log', '1.2610291815'],
-  ['settings', 'Settings', '1.2610301400'],
+  ['settings', 'Settings', '1.2611082210'],
   ['help', 'Help', '1.2610301400'],
   ['signin', 'Sign in', '1.2611082135'],
 ];

@@ -1,10 +1,10 @@
 // Boot: work out who is signed in and which organisation they are in, read that organisation's data, then run the app.
 import * as api from './api.js';
-import { state, setMembership, clearState } from './state.js';
-import { route, onRoute, start as startRouter, dispatch } from './router.js';
+import { state, can, ROLE_LABEL, setMembership, clearState, screenOn, screenName } from './state.js';
+import { route as addRoute, onRoute, start as startRouter, dispatch } from './router.js';
 import { renderShell, setActive, firstScreenHref, refreshBadges } from './shell.js';
 import { showAuth, showNoAccess } from './auth.js';
-import { html, mount, toast, errorHtml, loadingHtml } from './ui.js';
+import { html, mount, toast, errorHtml, loadingHtml, emptyHtml } from './ui.js';
 import { openLog } from './logentry.js';
 import { dashboardView } from './dashboard.js';
 import { tasksView } from './tasks.js';
@@ -36,6 +36,22 @@ function captureInvite() {
 }
 
 // ---- Routes ---------------------------------------------------------------------
+// A screen the superuser has switched off for this person's user type (Settings, Screens) is not opened, even from a saved link or a bookmark.
+function screenOff(main, section) {
+  const name = screenName(section);
+  const type = ROLE_LABEL[state.role] || 'your user type';
+  const go = firstScreenHref();
+  mount(main, html`<header class="page-head"><h1>${name}</h1></header>${emptyHtml(`${name} is switched off`,
+    can.configure ? `It is switched off for the ${type} user type. Nothing has been deleted, and you can switch it back on in Settings, under Screens.` : 'It has been switched off for your user type. Nothing has been deleted. Ask the superuser if you need it.',
+    html`<p><a class="btn" href="${can.configure ? '#/settings' : go}">${can.configure ? 'Open Settings' : (go === '#/help' ? 'Open Help' : 'Go to the first screen in your menu')}</a></p>`)}`);
+}
+// If the dashboard is off for this person, open the first screen in their menu instead of a "switched off" page.
+const route = (pattern, section, handler) => addRoute(pattern, section, (m, p, q) => {
+  if (screenOn(section)) return handler(m, p, q);
+  const go = firstScreenHref();
+  if (section === 'dashboard' && go !== '#/help' && go !== '#/dashboard') { location.hash = go; return undefined; }
+  return screenOff(m, section);
+});
 route('/dashboard', 'dashboard', (m) => dashboardView(m));
 route('/tasks', 'tasks', (m, p, q) => tasksView(m, q));
 route('/diary', 'diary', (m) => diaryView(m));

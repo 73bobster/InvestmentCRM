@@ -601,3 +601,10 @@ a.tag-link:hover { text-decoration: underline; }
 .tick { font-weight: 700; color: var(--brand, currentColor); }
 .tick-all { opacity: .45; }
 .cover-cell { font-size: 1.1rem; }
+
+/* Settings, Screens */
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.screens-table input.seq { width: 52px; min-height: 36px; padding: 4px 6px; text-align: center; font-variant-numeric: tabular-nums; }
+.screens-table th.num, .screens-table td.num { text-align: center; white-space: nowrap; }
+.screens-table td:nth-child(2) { min-width: 240px; }
+.screens-table input[type="checkbox"] { width: 20px; height: 20px; }

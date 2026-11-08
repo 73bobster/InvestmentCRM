@@ -1,10 +1,11 @@
 // Settings (superuser only): users and access, the lists used in drop-downs, and the date format.
 import * as api from './api.js';
 import { CONFIG } from './config.js';
-import { state, can, ROLE_LABEL, ROLE_HINT, ROLE_ORDER, ACCESS_SUMMARY, MEMBER_STATUS_LABEL } from './state.js';
+import { state, can, ROLE_LABEL, ROLE_HINT, ROLE_ORDER, ACCESS_SUMMARY, MEMBER_STATUS_LABEL, screenOn, screenLocked, menuLayout, MENU_STANDARD } from './state.js';
+import { refreshNav } from './shell.js';
 import { html, mount, on, openModal, fieldsHtml, readForm, toast, loadingHtml, emptyHtml, fmtDateShort, formatDate, DATE_FORMATS, getDateFormat, setDateFormat } from './ui.js';
 
-const SECTIONS = [['set-users', 'Users and access'], ['set-lists', 'Lists'], ['set-dates', 'Date format']];
+const SECTIONS = [['set-users', 'Users and access'], ['set-screens', 'Screens'], ['set-lists', 'Lists'], ['set-dates', 'Date format']];
 const LISTS = [['investment_kind', 'Kinds of investment', 'The kinds of component a deal can hold (listing fee, retro / rebate, marketing support, customer investment, new business and so on).'], ['investment_use', 'What the investment was used for', 'Offered when recording how an investment was spent (van branding, point of sale and so on).'], ['no_followup_reason', 'Reasons for no follow-up', 'Offered when someone chooses "No follow-up needed" or records an outcome with nothing more to do.'], ['task_outcome', 'Task outcomes', 'Chosen when the outcome of a task is recorded. Tick "ends the work" for outcomes that may finish with nothing more needed (such as Resolved); every other outcome must set a next step.'], ['task_category', 'Task categories', 'An optional label on a task, used to filter and count (Chase, Prepare, Payment and so on).']];
 
 export async function settingsView(main) {
@@ -46,6 +47,25 @@ export async function settingsView(main) {
           <p class="hint">Full: see, add and change. View: see only. None: not shown at all.</p>
         </details>
       </section>
+      <section class="settings-block" id="set-screens">
+        <div class="section-head"><h2>Screens</h2></div>
+        <p class="muted">The menu in ${state.org.name}. Give each screen a number from 0 to 99: they are shown in the menu lowest number first, the same for every user type. Then tick the user types who can see each screen. An unticked screen leaves that user type's menu, and links to it show a "switched off" page. You always keep Settings, and some screens are not available to some user types whatever you choose. Nothing is deleted, the records behind a screen are kept, and every change is still recorded in the audit log.</p>
+        <p class="hint">This hides screens; it does not make the data private. What each user type may see and change is set by the rules under Users and access. Help is always on and always last.</p>
+        <form id="screens-form" novalidate>
+          <div class="scroll"><table class="grid keep compact screens-table"><thead><tr><th>Order</th><th>Screen</th>${ROLE_ORDER.map((r) => html`<th class="num">${ROLE_LABEL[r]}</th>`)}</tr></thead><tbody>
+            ${menuLayout().map((r) => html`<tr>
+              <td><input class="seq" type="text" inputmode="numeric" maxlength="2" autocomplete="off" name="seq.${r.id}" value="${String(r.seq).padStart(2, '0')}" aria-label="Order number for ${r.label}, 0 to 99"></td>
+              <td><strong>${r.label}</strong> <span class="muted">${r.hint}</span></td>
+              ${ROLE_ORDER.map((role) => {
+                if (screenLocked(r.id, role)) return html`<td class="num"><span class="muted">Not available</span></td>`;
+                if (r.id === 'settings') return html`<td class="num"><input type="checkbox" checked disabled aria-label="${r.label} for ${ROLE_LABEL[role]}: always on"> <span class="muted">Always on</span></td>`;
+                return html`<td class="num"><input type="checkbox" name="on.${r.id}.${role}" ${screenOn(r.id, role) ? 'checked' : ''} aria-label="${r.label} for ${ROLE_LABEL[role]}"></td>`;
+              })}</tr>`)}
+          </tbody></table></div>
+          <p class="form-error" role="alert" hidden></p>
+          <p class="btn-row"><button class="btn btn-primary" type="submit">Save screens</button><button class="btn" type="button" data-action="screens-standard">Fill in the standard order and switch everything on</button></p>
+        </form>
+      </section>
       <section class="settings-block" id="set-lists">
         <div class="section-head"><h2>Lists</h2></div>
         <p class="muted">The choices offered in drop-down boxes. Items are never deleted: archive one to stop it being offered. Anything already recorded keeps its wording.</p>
@@ -64,6 +84,28 @@ export async function settingsView(main) {
       </section>
 `);
     main.querySelector('#show-removed')?.addEventListener('change', (e) => { showRemoved = e.target.checked; draw(); });
+    main.querySelector('#screens-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target; const err = form.querySelector('.form-error'); err.hidden = true;
+      const fail = (msg) => { err.textContent = msg; err.hidden = false; };
+      const screen_order = {};
+      for (const r of menuLayout()) {
+        const raw = String(form.elements[`seq.${r.id}`].value).trim();
+        if (!/^\d{1,2}$/.test(raw)) return fail(`${r.label}: enter a whole number from 0 to 99.`);
+        screen_order[r.id] = Number(raw);
+      }
+      const btn = form.querySelector('button[type="submit"]'); btn.disabled = true;
+      // Which screens are off for each user type. Screens a user type cannot use anyway, and Settings for the superuser, are never stored.
+      const hidden_screens_by_type = {};
+      for (const role of ROLE_ORDER) hidden_screens_by_type[role] = menuLayout().map((r) => r.id).filter((id) => !screenLocked(id, role) && id !== 'settings' && !form.elements[`on.${id}.${role}`].checked);
+      const empty = ROLE_ORDER.filter((role) => menuLayout().every((r) => screenLocked(r.id, role) || r.id === 'settings' || hidden_screens_by_type[role].includes(r.id)));
+      const total = Object.values(hidden_screens_by_type).reduce((n, l) => n + l.length, 0);
+      try {
+        await api.saveOrgSettings({ hidden_screens_by_type, screen_order }); refreshNav();
+        toast(`${total ? 'Screens saved.' : 'Screens saved. Everything is switched on.'}${empty.length ? ` ${empty.map((r) => ROLE_LABEL[r]).join(' and ')} can now see only Help${empty.includes('superuser') ? ' and Settings' : ''}.` : ''}`);
+        draw(); main.querySelector('#set-screens')?.scrollIntoView?.({ block: 'start' });
+      } catch (ex) { fail(ex.message || 'Could not save.'); btn.disabled = false; }
+    });
     main.querySelector('#date-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button'); btn.disabled = true;
@@ -147,6 +189,13 @@ export async function settingsView(main) {
   const reload = async () => { [members, invites] = await load(); await api.reload('lists'); listItems = api.D.lists; draw(); };
   draw();
   on(main, {
+    // puts the standard menu numbers back in the boxes and ticks every screen for every user type; nothing changes until Save is pressed
+    'screens-standard': () => {
+      const form = main.querySelector('#screens-form');
+      for (const [id, std] of MENU_STANDARD) { form.elements[`seq.${id}`].value = String(std).padStart(2, '0'); for (const role of ROLE_ORDER) { const box = form.elements[`on.${id}.${role}`]; if (box) box.checked = true; } }
+      form.querySelector('.form-error').hidden = true;
+      toast('Standard order filled in and every screen ticked. Save to apply it.');
+    },
     jump: (el) => main.querySelector(`#${el.dataset.to}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }),
     invite: () => inviteModal(),
     'li-add': (el) => { const outcome = el.dataset.list === 'task_outcome'; const specs = [{ name: 'name', label: 'Name', required: true, span: 2 }, ...(outcome ? [{ name: 'ends_work', label: 'Ends the work (may finish with nothing more needed)', type: 'checkbox', span: 2 }] : [])];

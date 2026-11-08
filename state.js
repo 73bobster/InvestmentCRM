@@ -27,6 +27,45 @@ export const SCREENS = {
   investments: 'Investments', accruals: 'Accruals', contacts: 'Contacts', audit: 'Audit log', settings: 'Settings', help: 'Help',
 };
 export const screenName = (id) => SCREENS[id] || 'This screen';
+
+// ---- Which screens are in the menu, in what order, and for whom ----------------------------------------------------------------
+// The superuser can switch any screen on or off for each user type and set the menu order (Settings, Screens). Two limits: the
+// superuser always keeps Settings, and the Audit log and Settings are never available to a user type that cannot use them.
+// Switching a screen off only hides it: nothing is deleted, the data is not made private (the database rules decide that) and every change is audited.
+// organisations.settings.hidden_screens_by_type holds { user type: [screen ids that are off] }; organisations.settings.screen_order holds { id: 0 to 99 }.
+export const SCREEN_INFO = {
+  dashboard: ['Dashboard', 'The opening screen.'],
+  tasks: ['Tasks', 'What is due, due soon or overdue.'],
+  diary: ['Diary', 'Meetings and reminders in date order.'],
+  brands: ['Brand owners', 'Brand owners, their brands and products, contacts and history.'],
+  customers: ['Customers', 'Groups, sub-groups and pubs, contacts and history.'],
+  investments: ['Investments', 'Deals, their components, payments and volume targets.'],
+  accruals: ['Accruals', 'Forecast and actual accruals, and the Finance download.'],
+  contacts: ['Contacts', 'Key contacts across brand owners and customers.'],
+  audit: ['Audit log', 'The screen only: every change is still recorded while it is hidden.'],
+  settings: ['Settings', 'Superuser only.'],
+};
+// The standard order number of each menu screen (0 to 99, lowest first).
+export const MENU_STANDARD = [['dashboard', 5], ['tasks', 10], ['diary', 15], ['brands', 20], ['customers', 25], ['investments', 30], ['accruals', 35], ['contacts', 40], ['audit', 45], ['settings', 50]];
+export const SWITCHABLE = MENU_STANDARD.map(([id]) => id);
+// Every menu screen in the order it is shown: { id, label, hint, std, seq }. Anything missing or not valid falls back to the standard.
+export function menuLayout(settings = state.org?.settings) {
+  const saved = settings?.screen_order && typeof settings.screen_order === 'object' ? settings.screen_order : {};
+  return MENU_STANDARD.map(([id, std], i) => {
+    const [label, hint] = SCREEN_INFO[id];
+    const seq = Number.isInteger(saved[id]) && saved[id] >= 0 && saved[id] <= 99 ? saved[id] : std;
+    return { id, label, hint, std, seq, i };
+  }).sort((a, b) => a.seq - b.seq || a.i - b.i);
+}
+// A screen a user type can never use, whatever the setting: Settings is the superuser's, and the Audit log is for superusers and admins.
+export const screenLocked = (id, role) => (id === 'settings' && role !== 'superuser') || (id === 'audit' && !['superuser', 'admin'].includes(role));
+// The screens switched off for one user type (the signed-in person's own by default). The superuser's Settings can never be off.
+export function hiddenScreens(role = state.role, settings = state.org?.settings) {
+  const by = settings?.hidden_screens_by_type;
+  const list = by && typeof by === 'object' && !Array.isArray(by) ? by[role] : null;
+  return Array.isArray(list) ? list.filter((id) => SWITCHABLE.includes(id) && !(id === 'settings' && role === 'superuser')) : [];
+}
+export const screenOn = (id, role = state.role, settings = state.org?.settings) => id === 'help' || !hiddenScreens(role, settings).includes(id);
 export const MEMBER_STATUS_LABEL = { active: 'Active', disabled: 'Suspended', removed: 'Removed' };
 
 export const can = {

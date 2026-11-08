@@ -2,7 +2,7 @@
 // the "Log" button, and the organisation switcher in both.
 import { html, mount, on, icon, openModal, closeModal, logoImg, wireLogos, setDateFormat, todayStr } from './ui.js';
 import { CONFIG } from './config.js';
-import { state, can, ROLE_LABEL } from './state.js';
+import { state, can, ROLE_LABEL, screenOn, menuLayout } from './state.js';
 import * as api from './api.js';
 import { screenLabel, versionOf } from './versions.js';
 
@@ -19,11 +19,14 @@ const NAV = [
   { id: 'audit', label: 'Audit log', href: '#/audit', when: () => can.audit },
   { id: 'settings', label: 'Settings', href: '#/settings', when: () => can.configure },
 ];
-// The bottom bar on a phone: Dashboard, Tasks, Brand owners, Customers. Everything else is under More.
+// The menu is in the order the superuser has set (Settings, Screens). A screen shows if this person's user type is allowed it and the superuser has not switched it off.
+const orderedNav = () => { const at = new Map(menuLayout().map((r, i) => [r.id, i])); return [...NAV].sort((a, b) => (at.get(a.id) ?? 99) - (at.get(b.id) ?? 99)); };
+const visibleNav = () => orderedNav().filter((n) => (!n.when || n.when()) && screenOn(n.id));
+// The bottom bar on a phone holds four screens: Dashboard, Tasks, Brand owners and Customers where they are on, topped up from the rest of the menu in order. The others are under More.
 const PHONE_TABS = ['dashboard', 'tasks', 'brands', 'customers'];
-const visibleNav = () => NAV.filter((n) => !n.when || n.when());
-const tabs = () => visibleNav().filter((n) => PHONE_TABS.includes(n.id));
-export const firstScreenHref = () => '#/dashboard';
+const tabs = () => { const v = visibleNav(); const pref = v.filter((n) => PHONE_TABS.includes(n.id)); return [...pref, ...v.filter((n) => !pref.includes(n))].slice(0, PHONE_TABS.length); };
+// Where to send someone whose usual first screen is switched off for their user type: the first screen in their menu, or Help.
+export const firstScreenHref = () => visibleNav()[0]?.href || '#/help';
 const HELP = { id: 'help', label: 'Help', href: '#/help' };
 let current = '';
 
@@ -93,7 +96,8 @@ export function renderShell({ onSwitchOrg, onSignOut, onLog }) {
 }
 
 function openMenu(onSignOut, onSwitchOrg) {
-  const rest = [...visibleNav().filter((n) => !PHONE_TABS.includes(n.id)), HELP];
+  const onBar = tabs();
+  const rest = [...visibleNav().filter((n) => !onBar.includes(n)), HELP];
   // The sidebar is hidden on a phone, so the organisation switcher lives here too (only for people in more than one organisation).
   const orgs = state.memberships.length > 1
     ? html`<label class="side-switch menu-switch"><span>Organisation</span><select id="menu-org-switch">${state.memberships.map((m) => html`<option value="${m.organisation_id}" ${m.organisation_id === state.org.id ? 'selected' : ''}>${m.organisation.name}</option>`)}</select></label>`
@@ -112,6 +116,15 @@ function openMenu(onSignOut, onSwitchOrg) {
     if (el.dataset.action === 'go') { closeModal(); return; }
     if (el.dataset.action === 'signout') { closeModal(); onSignOut(); }
   };
+}
+
+// Redraws the menu after the superuser changes screens, without disturbing the screen that is open.
+export function refreshNav() {
+  const nav = document.querySelector('.side-nav');
+  if (nav) mount(nav, html`${visibleNav().map((n) => navLink(n, 'side-link'))}`);
+  const bar = document.querySelector('.tabbar');
+  if (bar) mount(bar, html`${tabs().map((n) => navLink(n, 'tab-link'))}<button type="button" class="tab-link" data-action="more">${icon('more')}<span>More</span></button>`);
+  setActive(current); refreshBadges();
 }
 
 export function setBadge(id, n) {
