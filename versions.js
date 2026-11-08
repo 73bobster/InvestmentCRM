@@ -2,7 +2,7 @@
 // It is shown at the bottom of each screen so a person can say exactly which version they were looking at.
 // Update the entry for a screen whenever you change it.
 export const SCREENS = [
-  ['dashboard', 'Dashboard', '1.2610291815'],
+  ['dashboard', 'Dashboard', '1.2611082215'],
   ['tasks', 'Tasks', '1.2610291815'],
   ['diary', 'Diary', '1.2610291815'],
   ['brands', 'Brand owners', '1.2610310920'],

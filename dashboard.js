@@ -1,9 +1,9 @@
 // Dashboard: what needs attention today, across both sides.
 import * as api from './api.js';
 import { D } from './api.js';
-import { state, SIDE } from './state.js';
-import { taskRow, wireTasks } from './tasks.js';
-import { html, mount, emptyHtml, fmtMoneyShort, fmtDateShort, fmtDayTime, todayStr, addDaysISO, daysBetween, plural, toISO } from './ui.js';
+import { state, can, SIDE } from './state.js';
+import { wireTasks } from './tasks.js';
+import { html, mount, emptyHtml, fmtMoneyShort, fmtDateShort, fmtDayTime, relDays, todayStr, addDaysISO, daysBetween, plural, toISO } from './ui.js';
 
 // Active relationships with no open task of a person's own making (the system's reminders do not count): nobody is due to revisit them.
 export function goneQuiet() {
@@ -19,35 +19,45 @@ const sideSum = (side) => {
 
 export async function dashboardView(main) {
   const today = todayStr(); const week = addDaysISO(today, 7);
-  const mine = D.tasks.filter((t) => t.status === 'open' && t.owner_id === state.user.id).sort((a, b) => a.due_on.localeCompare(b.due_on));
-  const overdueAll = D.tasks.filter((t) => t.status === 'open' && t.due_on < today);
-  const meetings = D.entries.filter((e) => e.kind === 'meeting' && e.meeting_status === 'scheduled' && !e.archived_at && toISO(new Date(e.occurred_at)) <= week).sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
-  const quiet = goneQuiet();
-  const ending = D.agreements.filter((a) => !a.archived_at && ['agreed', 'live'].includes(a.status) && a.end_on && daysBetween(today, a.end_on) >= 0 && daysBetween(today, a.end_on) <= 90).sort((a, b) => a.end_on.localeCompare(b.end_on));
-  const atRisk = D.agreements.filter((a) => !a.archived_at && ['agreed', 'live'].includes(a.status) && (D.reviewsOf.get(a.id) || [])[0] && ['at_risk', 'missed'].includes(D.reviewsOf.get(a.id)[0].status));
+  // My own open tasks, not the system's "ends in" reminders: the deals panel already covers those.
+  const mineAll = D.tasks.filter((t) => t.status === 'open' && t.owner_id === state.user.id).sort((a, b) => a.due_on.localeCompare(b.due_on));
+  const mine = mineAll.filter((t) => t.source !== 'auto');
+  const overdue = mine.filter((t) => t.due_on < today).length;
+  const meetingsAll = D.entries.filter((e) => e.kind === 'meeting' && e.meeting_status === 'scheduled' && !e.archived_at).sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
+  const meetings = meetingsAll.filter((e) => toISO(new Date(e.occurred_at)) >= today && toISO(new Date(e.occurred_at)) <= week);
+  const unclosed = meetingsAll.filter((e) => toISO(new Date(e.occurred_at)) < today);
+  const live = (a) => !a.archived_at && ['agreed', 'live'].includes(a.status);
+  const need = [];
+  for (const a of D.agreements.filter(live)) {
+    const latest = (D.reviewsOf.get(a.id) || [])[0];
+    const left = a.end_on ? daysBetween(today, a.end_on) : null;
+    const why = [];
+    if (latest && ['at_risk', 'missed'].includes(latest.status)) why.push({ text: latest.status === 'missed' ? 'Target missed' : 'Target at risk', bad: true });
+    if (left !== null && left >= 0 && left <= 90) why.push({ text: `Ends ${fmtDateShort(a.end_on)} (${plural(left, 'day')})`, bad: left <= 30 });
+    if (why.length) need.push({ a, why, sort: left !== null && left >= 0 ? left : 999 });
+  }
+  need.sort((x, y) => x.sort - y.sort);
+  const quiet = goneQuiet().filter((p) => p.node_type !== 'site');
   const b = sideSum('brand'); const c = sideSum('customer');
   const link = (a) => `#/investments/${a.id}`;
+  const money = (label, tone, s, still, owed, href) => html`<a class="money-line ${tone}" href="${href}"><span class="money-label">${label}</span><span class="money-fig"><strong>${fmtMoneyShort(s.per_year)}</strong> a year · ${plural(s.count, 'live deal')}</span><span class="money-fig">${fmtMoneyShort(s.planned)} ${still}</span>${s.overdue ? html`<span class="money-fig c-overdue">${fmtMoneyShort(s.overdue)} overdue ${owed}</span>` : ''}</a>`;
   mount(main, html`
     <header class="page-head"><h1>Dashboard</h1></header>
-    <div class="rollup">
-      <section class="dash-panel tone-brand"><h2>Brand owners <span class="tag tag-brand">Money in</span></h2>
-        <div class="figures"><div class="figure"><p class="figure-label">Live and agreed</p><p class="figure-value">${b.count}</p></div><div class="figure"><p class="figure-label">Per year</p><p class="figure-value money">${fmtMoneyShort(b.per_year)}</p></div><div class="figure"><p class="figure-label">Still to receive</p><p class="figure-value money">${fmtMoneyShort(b.planned)}</p></div></div>
-        ${b.overdue ? html`<p class="c-overdue">${fmtMoneyShort(b.overdue)} overdue to receive</p>` : ''}<p><a href="#/brands">Open brand owners</a></p></section>
-      <section class="dash-panel tone-customer"><h2>Customers <span class="tag tag-customer">Money out</span></h2>
-        <div class="figures"><div class="figure"><p class="figure-label">Live and agreed</p><p class="figure-value">${c.count}</p></div><div class="figure"><p class="figure-label">Per year</p><p class="figure-value money">${fmtMoneyShort(c.per_year)}</p></div><div class="figure"><p class="figure-label">Still to pay</p><p class="figure-value money">${fmtMoneyShort(c.planned)}</p></div></div>
-        ${c.overdue ? html`<p class="c-overdue">${fmtMoneyShort(c.overdue)} overdue to pay</p>` : ''}<p><a href="#/customers">Open customers</a></p></section>
+    <div class="money-strip">
+      ${money('Money in', 'tone-brand', b, 'still to receive', 'to receive', '#/brands')}
+      ${money('Money out', 'tone-customer', c, 'still to pay', 'to pay', '#/customers')}
     </div>
     <div class="dash-grid">
-      <section class="dash-panel"><h2>My tasks ${overdueAll.length ? html`<span class="tag" style="background:var(--overdue-bg);color:var(--overdue)">${overdueAll.length} overdue in the team</span>` : ''}</h2>
-        ${mine.length ? html`<ul class="tasks">${mine.slice(0, 6).map((t) => taskRow(t))}</ul>${mine.length > 6 ? html`<p><a href="#/tasks">All ${mine.length} of my tasks</a></p>` : ''}` : html`<p class="muted">Nothing open for you.</p>`}</section>
-      <section class="dash-panel"><h2>Meetings in the next 7 days</h2>
-        ${meetings.length ? html`<ul class="attn">${meetings.map((e) => html`<li><strong>${e.title}</strong><br><span class="muted-small">${fmtDayTime(e.occurred_at)} · ${api.partyPath(e.party_id)}</span></li>`)}</ul>` : html`<p class="muted">No meetings booked. <a href="#/diary">Open the diary</a></p>`}</section>
-      <section class="dash-panel"><h2>Agreements ending within 90 days</h2>
-        ${ending.length ? html`<ul class="attn">${ending.map((a) => html`<li><a href="${link(a)}"><strong>${a.title}</strong></a><br><span class="muted-small">${api.partyPath(a.party_id)} · ends ${fmtDateShort(a.end_on)} (${plural(daysBetween(today, a.end_on), 'day')})</span></li>`)}</ul>` : html`<p class="muted">None ending soon.</p>`}</section>
-      <section class="dash-panel"><h2>Volume targets at risk</h2>
-        ${atRisk.length ? html`<ul class="attn">${atRisk.map((a) => html`<li><a href="${link(a)}"><strong>${a.title}</strong></a><br><span class="muted-small">${api.partyPath(a.party_id)} · latest review: ${D.reviewsOf.get(a.id)[0].status === 'missed' ? 'missed' : 'at risk'}</span></li>`)}</ul>` : html`<p class="muted">Nothing flagged at risk.</p>`}</section>
-      <section class="dash-panel"><h2>Gone quiet</h2><p class="muted-small">Active, but with no open task: nobody is due to revisit them.</p>
-        ${quiet.length ? html`<ul class="attn">${quiet.slice(0, 8).map((p) => html`<li><a href="#/${p.side === 'brand' ? 'brands' : 'customers'}/${p.id}"><strong>${api.partyPath(p.id)}</strong></a></li>`)}</ul>${quiet.length > 8 ? html`<p class="muted-small">and ${quiet.length - 8} more</p>` : ''}` : html`<p class="muted">Everyone has something planned.</p>`}</section>
-    </div>`);
+      <section class="dash-panel"><h2>My tasks ${overdue ? html`<span class="tag" style="background:var(--overdue-bg);color:var(--overdue)">${overdue} overdue</span>` : ''}</h2>
+        ${mine.length ? html`<ul class="mini-tasks">${mine.slice(0, 5).map((t) => html`<li class="${t.due_on < today ? 'is-late' : ''}"><div><strong>${t.title}</strong><span class="muted-small">${t.party_id ? api.partyPath(t.party_id) : 'No record linked'}</span></div><span class="mini-due ${t.due_on < today ? 'c-overdue' : ''}">${relDays(t.due_on)}</span>${can.write ? html`<button class="btn btn-sm" data-action="done" data-id="${t.id}">Record outcome</button>` : ''}</li>`)}</ul>
+          <p><a href="#/tasks">${mine.length > 5 ? `All ${mine.length} of my tasks` : 'Open Tasks'}</a>${mineAll.length > mine.length ? html` <span class="muted-small">· ${plural(mineAll.length - mine.length, 'automatic reminder')} on the Tasks screen</span>` : ''}</p>` : html`<p class="muted">Nothing open for you.</p><p><a href="#/tasks">Open Tasks</a></p>`}</section>
+      <section class="dash-panel"><h2>Meetings this week</h2>
+        ${meetings.length ? html`<ul class="attn">${meetings.map((e) => html`<li><strong>${e.title}</strong><br><span class="muted-small">${fmtDayTime(e.occurred_at)} · ${api.partyPath(e.party_id)}</span></li>`)}</ul>` : html`<p class="muted">No meetings booked in the next 7 days.</p>`}
+        ${unclosed.length ? html`<p class="muted-small"><a href="#/diary">${plural(unclosed.length, 'earlier meeting')}</a> still marked as scheduled. Record what happened or cancel.</p>` : ''}</section>
+    </div>
+    <section class="dash-panel wide"><h2>Needs a decision</h2>
+      ${need.length ? html`<ul class="attn">${need.slice(0, 6).map(({ a, why }) => html`<li><a href="${link(a)}"><span class="attn-name"><strong>${a.title}</strong><br><span class="muted-small">${api.partyPath(a.party_id)}</span></span><span class="attn-when">${why.map((w) => html`<span class="tag ${w.bad ? 'tag-bad' : ''}">${w.text}</span> `)}</span></a></li>`)}</ul>${need.length > 6 ? html`<p><a href="#/investments">${need.length - 6} more on Investments</a></p>` : ''}` : html`<p class="muted">No live deals are ending within 90 days or behind on their targets.</p>`}</section>
+    ${quiet.length ? html`<section class="dash-panel wide"><h2>Gone quiet</h2><p class="muted-small">Active, but nobody has a follow-up due.</p>
+      <p class="quiet-list">${quiet.slice(0, 3).map((p) => html`<a href="#/${p.side === 'brand' ? 'brands' : 'customers'}/${p.id}">${api.partyPath(p.id)}</a>`)}${quiet.length > 3 ? html` <span class="muted-small">and ${quiet.length - 3} more</span>` : ''}</p></section>` : ''}`);
   wireTasks(main);
 }

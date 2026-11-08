@@ -42,13 +42,18 @@ export function applyBrand(org) {
   const root = document.documentElement;
   const primary = org?.brand?.colours?.primary;
   const lum = luminance(primary);
-  if (lum === null) {
+  // Pink is the live organisation. A demo or test organisation is blue, so it can never be mistaken for live data.
+  const test = /(^|[-_ ])(demo|test)($|[-_ ])/i.test(`${org?.slug || ''} ${org?.settings?.environment || ''}`);
+  document.documentElement.dataset.env = test ? 'test' : 'live';
+  if (test) {
+    root.style.setProperty('--brand', '#1F5FBF'); root.style.setProperty('--brand-ink', '#FFFFFF');
+  } else if (lum === null) {
     root.style.removeProperty('--brand'); root.style.removeProperty('--brand-ink');
   } else {
     root.style.setProperty('--brand', primary);
     root.style.setProperty('--brand-ink', lum > 0.4 ? '#111111' : '#FFFFFF');
   }
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', primary || '#FF0066');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', test ? '#1F5FBF' : (primary || '#FF0066'));
   document.title = org ? `${CONFIG.appName} – ${org.name}` : CONFIG.appName;
   setDateFormat(org?.settings?.date_format);   // the organisation's date format, used by every screen and download
 }
