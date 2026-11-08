@@ -1,6 +1,6 @@
 {
   "name": "Investment CRM",
-  "short_name": "AD CRM",
+  "short_name": "Investment CRM",
   "start_url": "./#/dashboard",
   "scope": "./",
   "display": "standalone",
