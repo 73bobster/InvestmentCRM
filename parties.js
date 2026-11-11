@@ -36,7 +36,7 @@ const isQuiet = (p, tasks) => p.status === 'active' && !p.archived_at && !(tasks
 export function openPartyForm(party = null, { side, parent_id } = {}) {
   const sd = party?.side || side; const parent = party ? D.partyById.get(party.parent_id) : parent_id ? D.partyById.get(parent_id) : null;
   const types = party ? [party.node_type] : parent ? CHILD_TYPES[parent.node_type] : ROOT_TYPES[sd];
-  const p = party || { status: 'active', owner_id: state.user.id, node_type: types[0] };
+  const p = party || { status: 'active', owner_id: null, node_type: types[0] };
   const dlg = openModal({
     title: party ? `Change ${NODE_LABEL[party.node_type].toLowerCase()}` : parent ? `Add under ${parent.name}` : `Add a ${SIDE[sd].label.toLowerCase()}`, submitLabel: 'Save', wide: true,
     body: html`${parent ? html`<p class="muted">Inside <strong>${api.partyPath(parent.id)}</strong></p>` : ''}<div class="form-grid">
