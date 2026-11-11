@@ -3,7 +3,7 @@
 import * as api from './api.js';
 import { D } from './api.js';
 import { state, can, SIDE, NODE_LABEL, CHILD_TYPES, ROOT_TYPES, PARTY_STATUS, ENTRY_KIND, AGREEMENT_STATUS } from './state.js';
-import { openLog, openTaskForm, peopleOptions, contactsFor, agreementsFor, afterChange } from './logentry.js';
+import { openLog, openTaskForm, ownerOptions, contactsFor, agreementsFor, afterChange } from './logentry.js';
 import { taskRow, wireTasks } from './tasks.js';
 import { openContactForm, contactsTable, contactHandlers } from './contacts.js';
 import { openAgreementForm, openCoverageForm, agreementsTable, amountText, covers, liveComponents } from './investments.js';
@@ -32,6 +32,16 @@ const total = (r, k) => Number(r?.[`own_${k}`] || 0) + Number(r?.[`below_${k}`] 
 const childrenOf = (id, archived) => (D.childrenOf.get(id) || []).filter((c) => archived || !c.archived_at);
 const isQuiet = (p, tasks) => p.status === 'active' && !p.archived_at && !(tasks.get(p.id)?.human);
 
+// A brand owner's phone and email are its primary contact's, so they are not held twice: the About panel shows the key contact. Others show their own details.
+function aboutContact(party) {
+  if (party.node_type === 'brand_owner') {
+    const c = (D.contactsOf.get(party.id) || []).filter((x) => !x.archived_at).sort((a, b) => Number(b.is_key) - Number(a.is_key))[0];
+    if (c) return [['Primary contact', c.name + (c.job_title ? `, ${c.job_title}` : '')], ['Phone', c.phone || c.mobile], ['Email', c.email ? html`<a href="mailto:${c.email}">${c.email}</a>` : '']];
+    if (!party.phone && !party.email) return [['Primary contact', 'None yet: add one on the Contacts tab.']];
+  }
+  return [['Phone', party.phone], ['Email', party.email ? html`<a href="mailto:${party.email}">${party.email}</a>` : '']];
+}
+
 // ---- Add / change a record ------------------------------------------------------------------------------------------------
 export function openPartyForm(party = null, { side, parent_id } = {}) {
   const sd = party?.side || side; const parent = party ? D.partyById.get(party.parent_id) : parent_id ? D.partyById.get(parent_id) : null;
@@ -43,9 +53,9 @@ export function openPartyForm(party = null, { side, parent_id } = {}) {
       ${field({ name: 'node_type', label: 'This is a', type: 'select', required: true, options: types.map((t) => [t, NODE_LABEL[t]]), value: p.node_type })}
       ${field({ name: 'name', label: 'Name', required: true, value: p.name })}
       ${field({ name: 'status', label: 'Status', type: 'select', required: true, options: Object.entries(PARTY_STATUS), value: p.status, hint: 'Active ones with no open task are flagged as "gone quiet".' })}
-      <div class="field"><label for="f-owner_id">Looked after by</label><select id="f-owner_id" name="owner_id"><option value="">Not set</option>${peopleOptions(p.owner_id)}</select></div>
-      ${field({ name: 'phone', label: 'Phone', type: 'tel', value: p.phone })}
-      ${field({ name: 'email', label: 'Email', type: 'email', value: p.email })}
+      <div class="field"><label for="f-owner_id">Looked after by</label><select id="f-owner_id" name="owner_id"><option value="">Not set</option>${ownerOptions(p.owner_id)}</select></div>
+      ${p.node_type === 'brand_owner' ? '' : html`${field({ name: 'phone', label: 'Phone', type: 'tel', value: p.phone })}
+      ${field({ name: 'email', label: 'Email', type: 'email', value: p.email })}`}
       ${field({ name: 'website', label: 'Website', value: p.website })}
       ${field({ name: 'address', label: 'Address', value: p.address })}
       ${field({ name: 'notes', label: 'Notes', type: 'textarea', rows: 3, span: 2, value: p.notes })}
@@ -166,7 +176,7 @@ export async function partyView(main, side, id, q = {}) {
     let panel;
     if (ui.tab === 'overview') {
       panel = html`<div class="rollup">
-        <section class="dash-panel"><h2>About</h2>${facts([['Type', NODE_LABEL[party.node_type]], ['Status', pill(party.status, PARTY_STATUS[party.status])], ['Looked after by', api.personName(party.owner_id)], ['Phone', party.phone], ['Email', party.email ? html`<a href="mailto:${party.email}">${party.email}</a>` : ''], ['Website', party.website], ['Address', party.address], ['Notes', party.notes]])}</section>
+        <section class="dash-panel"><h2>About</h2>${facts([['Type', NODE_LABEL[party.node_type]], ['Status', pill(party.status, PARTY_STATUS[party.status])], ['Looked after by', api.personName(party.owner_id)], ...aboutContact(party), ['Website', party.website], ['Address', party.address], ['Notes', party.notes]])}</section>
         <section class="dash-panel"><h2>${S.money}</h2>
           <table class="mini"><thead><tr><th></th><th>At this level</th>${kids.length ? html`<th>Including below</th>` : ''}</tr></thead><tbody>
             ${rollRow('Agreed or live', 'count', (v) => fmtInt(Number(v || 0)))}${rollRow('Per year', 'per_year')}${rollRow('One-off totals', 'total')}${rollRow(S.paid, 'done')}${rollRow(S.unpaid, 'planned')}${rollRow('Overdue', 'overdue')}

@@ -16,7 +16,9 @@ export function partyOptions(selected, { side } = {}) {
   if (side) return group(side);
   return ['brand', 'customer'].map((s) => { const o = group(s); return o.length ? html`<optgroup label="${SIDE[s].plural}">${o}</optgroup>` : ''; });
 }
-export const peopleOptions = (selected) => D.people.filter((p) => p.status === 'active').map((p) => html`<option value="${p.id}" ${p.id === selected ? raw('selected') : ''}>${p.name}</option>`);
+// People left out of the "Looked after by" lists (the developer, for one): their email is in the organisation setting owner_list_hidden_emails. Someone already chosen stays visible.
+export const ownerOptions = (selected) => { const hide = (state.org?.settings?.owner_list_hidden_emails || []).map((e) => String(e).toLowerCase()); return peopleOptions(selected, (p) => p.id === selected || !hide.includes((p.email || '').toLowerCase())); };
+export const peopleOptions = (selected, keep = () => true) => D.people.filter((p) => p.status === 'active' && keep(p)).map((p) => html`<option value="${p.id}" ${p.id === selected ? raw('selected') : ''}>${p.name}</option>`);
 // People, contacts and investments that belong to a party or to anything above it.
 const lineage = (partyId) => [...api.ancestors(partyId).map((p) => p.id), partyId];
 export const contactsFor = (partyId) => lineage(partyId).flatMap((id) => D.contactsOf.get(id) || []).filter((c) => !c.archived_at);
