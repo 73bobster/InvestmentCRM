@@ -49,14 +49,27 @@ export function openPartyForm(party = null, { side, parent_id } = {}) {
       ${field({ name: 'website', label: 'Website', value: p.website })}
       ${field({ name: 'address', label: 'Address', value: p.address })}
       ${field({ name: 'notes', label: 'Notes', type: 'textarea', rows: 3, span: 2, value: p.notes })}
-    </div>`,
+    </div>${!party && !parent && sd === 'brand' ? html`<h3 class="form-sub">Primary contact</h3><p class="muted-small">The main person at this brand owner. They are added to Contacts as a key contact. Leave the name empty to add one later.</p><div class="form-grid">
+      ${field({ name: 'pc_name', label: 'Contact name' })}
+      ${field({ name: 'pc_job_title', label: 'Job title' })}
+      ${field({ name: 'pc_email', label: 'Contact email', type: 'email' })}
+      ${field({ name: 'pc_phone', label: 'Contact phone', type: 'tel' })}
+      ${field({ name: 'pc_mobile', label: 'Contact mobile', type: 'tel' })}
+    </div>` : ''}`,
     onSubmit: async (form) => {
       const v = readForm(form, [{ name: 'node_type' }, { name: 'name' }, { name: 'status' }, { name: 'owner_id' }, { name: 'phone' }, { name: 'email' }, { name: 'website' }, { name: 'address' }, { name: 'notes' }]);
       if (!v.name) throw new Error('Enter a name.');
+      const pc = form.elements.pc_name ? readForm(form, [{ name: 'pc_name' }, { name: 'pc_job_title' }, { name: 'pc_email' }, { name: 'pc_phone' }, { name: 'pc_mobile' }]) : null;
+      if (pc && !pc.pc_name && (pc.pc_job_title || pc.pc_email || pc.pc_phone || pc.pc_mobile)) throw new Error('Enter the contact\'s name, or clear their other details.');
       let saved;
       if (party) { delete v.node_type; saved = await api.saveParty(v, party.id); }
       else saved = await api.saveParty({ ...v, side: sd, parent_id: parent?.id || null });
-      toast('Saved.');
+      let contactNote = '';
+      if (pc?.pc_name) {
+        try { await api.saveContact({ party_id: saved.id, name: pc.pc_name, job_title: pc.pc_job_title, email: pc.pc_email, phone: pc.pc_phone, mobile: pc.pc_mobile, is_key: true }); await api.reload('contacts'); }
+        catch (ex) { contactNote = ` The brand owner is saved, but the contact was not: ${ex.message} Add them from the Contacts tab.`; }
+      }
+      toast(`Saved.${contactNote}`, contactNote ? 'error' : undefined);
       setTimeout(async () => { await api.reload('parties'); if (!party) location.hash = `#/${path(sd)}/${saved.id}`; else afterChange('parties'); }, 0);
     },
   });
@@ -76,7 +89,6 @@ export async function partiesView(main, side) {
     D.parties.filter((p) => p.side === side && !p.parent_id).sort((a, b) => a.name.localeCompare(b.name)).forEach((p) => walk(p, 0));
     mount(main, html`
       <header class="page-head"><h1>${S.plural}</h1>${can.write ? html`<div class="head-actions">${ROOT_TYPES[side].map((t, i) => html`<button class="btn ${i === 0 ? 'btn-primary' : ''}" data-action="add" data-type="${t}">Add ${t === 'site' ? 'a pub or outlet' : `a ${NODE_LABEL[t].toLowerCase()}`}</button>`)}</div>` : ''}</header>
-      <p class="muted">${side === 'brand' ? 'Money comes in from brand owners: support for selling their brands.' : 'Money goes out to customers: investment in pubs and restaurant groups.'} Figures include everything underneath.</p>
       <form class="filters" id="p-filters" onsubmit="return false">
         <div class="field"><label for="p-q">Search</label><input id="p-q" type="search" value="${ui.q}"></div>
         <div class="field"><label for="p-status">Status</label><select id="p-status"><option value="">All</option>${Object.entries(PARTY_STATUS).map(([k, l]) => html`<option value="${k}" ${ui.status === k ? 'selected' : ''}>${l}</option>`)}</select></div>

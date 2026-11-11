@@ -242,7 +242,14 @@ export const depthOf = (id) => ancestors(id).length + 1;
 // Nothing is ever deleted: a record is archived by setting archived_at.
 const saver = (table) => async (values, id) => {
   if (id) return ok(await from(table).update(values).eq('id', id).eq('organisation_id', org()).select().single());
-  return ok(await from(table).insert({ ...values, organisation_id: org() }).select().single());
+  // The new row gets its id here, so that if the reply is lost or reported as an error after the database has saved it, we find it rather than show a false error.
+  const row = { id: crypto.randomUUID(), ...values, organisation_id: org() };
+  try { return ok(await from(table).insert(row).select().single()); }
+  catch (e) {
+    const saved = await from(table).select('*').eq('id', row.id).maybeSingle().then((r) => r?.data || null, () => null);
+    if (saved) return saved;
+    throw e;
+  }
 };
 export const saveParty = saver('parties');
 export const saveContact = saver('contacts');
